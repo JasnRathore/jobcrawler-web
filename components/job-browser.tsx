@@ -21,6 +21,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { toast } from "@/components/ui/toast";
 import {
   Combobox,
   ComboboxContent,
@@ -246,7 +247,6 @@ export function JobBrowser() {
   async function toggleBookmark(job: Job) {
     const key = jobKey(job);
     setBusyJobs((current) => new Set(current).add(key));
-    setError("");
     try {
       const response = await fetch("/api/bookmarks", {
         method: "POST",
@@ -264,13 +264,25 @@ export function JobBrowser() {
       if (!response.ok) {
         throw new Error(payload.error ?? "Bookmark could not be updated.");
       }
+      const saved = payload.saved ?? Number(job.is_bookmarked) !== 1;
+      toast.add({
+        title: saved ? "Role saved" : "Role removed",
+        description: saved
+          ? `${job.title || "This role"} is in your saved roles.`
+          : `${job.title || "This role"} was removed from your saved roles.`,
+        type: "success",
+      });
       setRefreshKey((current) => current + 1);
     } catch (requestError) {
-      setError(
-        requestError instanceof Error
-          ? requestError.message
-          : "Bookmark could not be updated.",
-      );
+      toast.add({
+        title: "Couldn't update saved roles",
+        description:
+          requestError instanceof Error
+            ? requestError.message
+            : "Bookmark could not be updated.",
+        type: "error",
+        priority: "high",
+      });
     } finally {
       setBusyJobs((current) => {
         const next = new Set(current);
