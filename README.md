@@ -1,8 +1,8 @@
 # Crawler frontend
 
 The web app is an independent Next.js project. It uses the App Router, Tailwind
-CSS v4, shadcn/ui, Opaline glass components, and the Turso serverless TypeScript
-SDK for direct remote database access.
+CSS v4, shadcn/ui, and the Turso serverless TypeScript SDK for direct remote
+database access.
 
 ## Setup
 
@@ -48,21 +48,22 @@ deployment appropriately if it should not be public.
 
 ## UI
 
-Initialize shadcn components with:
+The Crawler job browser brings five hiring platforms into one searchable index.
+Search stays prominent, filters sit beside results on larger screens and
+collapse behind a filter control on small screens, and Explore/Saved are the
+primary navigation. The warm paper-and-forest palette is shared by light and
+dark themes through the tokens in `app/globals.css`; the theme follows the
+system setting by default and the header toggle remembers an explicit choice on
+this device. Search, filtering, pagination, bookmarks, and apply links use the
+live routes described above.
 
-```powershell
-npx shadcn@latest add button
-```
+## AI
 
-Add Opaline components from the shadcn registry as needed:
-
-```powershell
-npx shadcn@latest add @opaline/theme @opaline/glass-button
-```
-
-The Opaline glass provider is configured in `app/layout.tsx`; the generated
-components are under `components/ui/opaline`. True refraction requires Chromium;
-other browsers use the component's frosted-glass fallback.
+The frontend does not currently make model calls or include an AI execution
+workflow. Job discovery and saved roles are backed by the existing Turso
+routes; the UI does not simulate AI-generated results. GitHub Copilot can be
+used to develop the application, but adding an in-product AI feature requires
+a concrete capability and a server-side model integration.
 
 ## Checks
 

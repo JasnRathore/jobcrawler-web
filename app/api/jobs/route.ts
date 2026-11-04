@@ -149,6 +149,7 @@ export async function GET(request: NextRequest) {
         jobs,
         total,
         page,
+        pageSize,
         totalPages,
         bookmarkCount: Number(bookmarksRow?.total ?? 0),
       },

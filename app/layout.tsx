@@ -1,20 +1,21 @@
 import type { Metadata } from "next";
-import { LiquidGlassProvider } from "@/components/ui/opaline/liquid-glass";
+import Script from "next/script";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Discover your next opportunity | Crawler",
+  title: "Crawler | Job search",
   description:
-    "Explore job opportunities, compare roles, and find work that fits your next career move.",
+    "Search current openings from Greenhouse, Lever, Lever EU, Workable, and Ashby in one place.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className="h-full antialiased">
+    <html lang="en" className="h-full antialiased" suppressHydrationWarning>
+      <head>
+        <Script src="/theme-preference.js" strategy="beforeInteractive" />
+      </head>
       <body className="min-h-full">
-        <LiquidGlassProvider ior={1.9} surface="lip" specular={0.5}>
-          {children}
-        </LiquidGlassProvider>
+        {children}
       </body>
     </html>
   );

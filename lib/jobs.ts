@@ -34,6 +34,7 @@ export interface JobSearchResponse {
   jobs: Job[];
   total: number;
   page: number;
+  pageSize: number;
   totalPages: number;
   bookmarkCount: number;
 }
