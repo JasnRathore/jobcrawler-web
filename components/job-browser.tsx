@@ -16,7 +16,6 @@ import {
   SlidersHorizontal,
   X,
 } from "lucide-react";
-import Link from "next/link";
 import { Dialog } from "@base-ui/react/dialog";
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 
@@ -276,7 +275,7 @@ export function JobBrowser() {
   const lastResult = Math.min((page - 1) * pageSize + jobs.length, total);
 
   const filterPanel = (closeControl?: ReactNode, title?: ReactNode) => (
-    <div className="rounded-xl border border-border/80 bg-card p-4 sm:p-5">
+    <div className="rounded-lg border border-border/80 bg-card p-4 sm:p-5">
       <div className="mb-5 flex items-center justify-between gap-3">
         {title ?? (
           <h2 className="flex items-center gap-2 text-sm font-semibold">
@@ -380,22 +379,8 @@ export function JobBrowser() {
       </a>
 
       <header className="sticky top-0 z-30 border-b border-border/70 bg-background/90 backdrop-blur-xl">
-        <div className="mx-auto flex h-16 max-w-[1440px] items-center gap-2 px-3 sm:gap-5 sm:px-7 lg:px-10">
-          <Link
-            href="/"
-            className="inline-flex shrink-0 items-center gap-2.5 rounded-md font-semibold tracking-[-0.025em] text-foreground"
-            aria-label="Crawler home"
-          >
-            <span className="flex size-9 items-center justify-center gap-0.5 rounded-xl bg-primary shadow-sm">
-              <span className="h-2 w-0.5 rounded-full bg-primary-foreground/65" />
-              <span className="h-3.5 w-0.5 rounded-full bg-primary-foreground/85" />
-              <span className="h-2.5 w-0.5 rounded-full bg-primary-foreground" />
-              <span className="h-4 w-0.5 rounded-full bg-primary-foreground/80" />
-              <span className="h-2 w-0.5 rounded-full bg-primary-foreground/60" />
-            </span>
-            <span className="text-[15px]">Crawler</span>
-          </Link>
-          <nav aria-label="Job views" className="flex h-full items-center gap-0.5 sm:ml-1 sm:gap-1">
+        <div className="mx-auto flex h-14 max-w-[1440px] items-center gap-2 px-3 sm:gap-5 sm:px-7 lg:px-10">
+          <nav aria-label="Job views" className="flex h-full items-center gap-0.5 sm:gap-1">
             <button
               type="button"
               onClick={() => {
@@ -403,7 +388,7 @@ export function JobBrowser() {
                 setPage(1);
               }}
               aria-pressed={mode === "all"}
-              className={`relative inline-flex h-10 items-center gap-2 rounded-lg px-2.5 text-sm transition-colors sm:px-3.5 ${
+              className={`relative inline-flex h-9 items-center gap-2 rounded-md px-2.5 text-sm transition-colors sm:px-3 ${
                 mode === "all"
                   ? "bg-secondary font-semibold text-secondary-foreground"
                   : "text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -418,17 +403,18 @@ export function JobBrowser() {
                 setPage(1);
               }}
               aria-pressed={mode === "saved"}
-              className={`relative inline-flex h-10 items-center gap-2 rounded-lg px-2.5 text-sm transition-colors sm:px-3.5 ${
+              className={`relative inline-flex h-9 items-center gap-2 rounded-md px-2.5 text-sm transition-colors sm:px-3 ${
                 mode === "saved"
                   ? "bg-secondary font-semibold text-secondary-foreground"
                   : "text-muted-foreground hover:bg-muted hover:text-foreground"
               }`}
             >
-              <Bookmark aria-hidden="true" className="size-3.5" />
               Saved
-              <span className="rounded-md bg-background px-1.5 py-0.5 text-[11px] tabular-nums text-muted-foreground">
-                {bookmarkCount}
-              </span>
+              {bookmarkCount > 0 && (
+                <span className="rounded bg-foreground/10 px-1.5 py-0.5 text-[11px] tabular-nums text-muted-foreground">
+                  {bookmarkCount}
+                </span>
+              )}
             </button>
           </nav>
           <div className="ml-auto">
@@ -439,26 +425,12 @@ export function JobBrowser() {
 
       <main className="mx-auto max-w-[1440px] px-4 pb-16 pt-5 sm:px-7 sm:pt-10 lg:px-10">
         <Dialog.Root open={showFilters} onOpenChange={setShowFilters}>
-        <div className="mb-4 max-w-3xl sm:mb-7">
-          <p className="hidden items-center gap-2 rounded-full border border-primary/15 bg-primary/5 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.11em] text-primary sm:inline-flex">
-            <span aria-hidden="true" className="size-1.5 rounded-full bg-primary" />
-            Open roles, gathered
-          </p>
-          <h1 className="font-editorial text-[2rem] font-medium leading-[1.08] tracking-[-0.04em] sm:mt-4 sm:text-[3rem]">
-            {mode === "saved" ? "Your saved roles." : "Find work that fits."}
-          </h1>
-          <p className="mt-3 max-w-xl text-[15px] leading-6 text-muted-foreground">
-            {mode === "saved"
-              ? "A short list of roles you want to return to."
-              : <>
-                  <span className="sm:hidden">Search roles across {providers.length} platforms.</span>
-                  <span className="hidden sm:inline">Search openings from {providers.length} hiring platforms in one place.</span>
-                </>}
-          </p>
-        </div>
+        <h1 className="sr-only">
+          {mode === "saved" ? "Saved roles" : "Search roles"}
+        </h1>
 
         <form
-          className="grid gap-2 rounded-2xl border border-border/80 bg-card p-1.5 shadow-[0_1px_2px_color-mix(in_oklch,var(--foreground)_5%,transparent),0_8px_24px_-16px_color-mix(in_oklch,var(--foreground)_18%,transparent)] sm:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)_auto] sm:items-center sm:p-2.5"
+          className="grid gap-2 rounded-lg border border-border bg-card p-1.5 sm:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)_auto] sm:items-center sm:p-2"
           onSubmit={(event) => {
             event.preventDefault();
             setPage(1);
@@ -478,7 +450,7 @@ export function JobBrowser() {
               value={query}
               onChange={(event) => updateFilter(() => setQuery(event.target.value))}
               placeholder="Role, skill, or company"
-              className="h-11 w-full rounded-xl border border-transparent bg-input/55 pl-11 pr-3 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:bg-background focus:ring-2 focus:ring-ring/15 sm:h-12"
+              className="h-11 w-full rounded-md border border-transparent bg-input/55 pl-11 pr-3 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:bg-background focus:ring-2 focus:ring-ring/15 sm:h-12"
             />
           </label>
           <label className="relative block min-w-0">
@@ -491,12 +463,12 @@ export function JobBrowser() {
               value={location}
               onChange={(event) => updateFilter(() => setLocation(event.target.value))}
               placeholder="City, country, or remote"
-              className="h-11 w-full rounded-xl border border-transparent bg-input/55 pl-11 pr-3 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:bg-background focus:ring-2 focus:ring-ring/15 sm:h-12"
+              className="h-11 w-full rounded-md border border-transparent bg-input/55 pl-11 pr-3 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:bg-background focus:ring-2 focus:ring-ring/15 sm:h-12"
             />
           </label>
           <button
             type="submit"
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-primary px-6 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:h-12"
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-primary px-6 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:h-12"
           >
             <Search aria-hidden="true" className="size-4" />
             Search roles
@@ -603,7 +575,7 @@ export function JobBrowser() {
                 return (
                   <article
                     key={key}
-                    className="group rounded-xl border border-border/80 bg-card px-4 py-4 shadow-[0_1px_2px_color-mix(in_oklch,var(--foreground)_4%,transparent)] transition-colors hover:border-primary/25 hover:bg-card sm:px-5 sm:py-5"
+                    className="group rounded-lg border border-border/80 bg-card px-4 py-4 transition-colors hover:border-foreground/20 sm:px-5 sm:py-5"
                   >
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-5">
                       <div className="min-w-0">
@@ -675,9 +647,9 @@ export function JobBrowser() {
                           aria-pressed={isSaved}
                           disabled={busyJobs.has(key)}
                           onClick={() => void toggleBookmark(job)}
-                          className={`inline-flex size-11 shrink-0 items-center justify-center rounded-xl border transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-50 sm:size-10 ${
+                          className={`inline-flex size-10 shrink-0 items-center justify-center rounded-md border transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-50 ${
                             isSaved
-                              ? "border-primary/25 bg-primary/5 text-primary"
+                              ? "border-foreground/20 bg-foreground/5 text-foreground"
                               : "bg-background text-muted-foreground"
                           }`}
                         >
@@ -691,7 +663,7 @@ export function JobBrowser() {
                             href={primaryUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:h-10 sm:flex-none"
+                            className="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-md bg-primary px-4 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:flex-none"
                           >
                             {job.apply_url ? "Apply" : "View role"}
                             <ExternalLink aria-hidden="true" className="size-3.5" />
@@ -750,11 +722,11 @@ export function JobBrowser() {
               {loading && jobs.length === 0 && (
                 <div className="space-y-3" aria-hidden="true">
                   {[0, 1, 2].map((item) => (
-                    <div key={item} className="min-h-56 space-y-4 rounded-xl border border-border/80 bg-card px-4 py-5 sm:px-5">
+                    <div key={item} className="min-h-56 space-y-4 rounded-lg border border-border/80 bg-card px-4 py-5 sm:px-5">
                       <div className="h-3 w-36 animate-pulse rounded bg-muted" />
                       <div className="h-5 w-3/5 animate-pulse rounded bg-muted" />
                       <div className="h-3 w-2/5 animate-pulse rounded bg-muted" />
-                      <div className="h-10 w-28 animate-pulse rounded-xl bg-muted" />
+                      <div className="h-10 w-28 animate-pulse rounded-md bg-muted" />
                     </div>
                   ))}
                 </div>

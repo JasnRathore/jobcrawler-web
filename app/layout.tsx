@@ -3,9 +3,8 @@ import Script from "next/script";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Crawler | Job search",
-  description:
-    "Search current openings from Greenhouse, Lever, Lever EU, Workable, and Ashby in one place.",
+  title: "Jobs",
+  description: "Search current job openings across multiple platforms.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
