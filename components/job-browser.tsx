@@ -46,6 +46,14 @@ const providerLabels: Record<Provider, string> = {
   workable: "Workable",
 };
 
+const providerBadgeStyles: Record<Provider, string> = {
+  ashbyhq: "border-purple-500/20 bg-purple-500/10 text-purple-400 dark:text-purple-300",
+  greenhouse: "border-emerald-500/20 bg-emerald-500/10 text-emerald-400 dark:text-emerald-300",
+  lever: "border-blue-500/20 bg-blue-500/10 text-blue-400 dark:text-blue-300",
+  levereu: "border-sky-500/20 bg-sky-500/10 text-sky-400 dark:text-sky-300",
+  workable: "border-amber-500/20 bg-amber-500/10 text-amber-400 dark:text-amber-300",
+};
+
 const employmentOptions = [
   { value: "", label: "Any type" },
   { value: "full-time", label: "Full-time" },
@@ -336,7 +344,7 @@ export function JobBrowser() {
                 onChange={(event) =>
                   updateFilter(() => setPostedAfter(event.target.value))
                 }
-                className="h-10 w-full min-w-0 rounded-lg border border-input bg-input/40 px-2 text-xs outline-none transition focus:border-ring focus:bg-background focus:ring-2 focus:ring-ring/15"
+                className="h-10 w-full min-w-0 rounded-md border border-input/60 bg-input/40 px-2 text-xs font-medium text-foreground outline-none transition focus:border-primary focus:bg-background focus:ring-2 focus:ring-primary/20"
               />
             </label>
             <label className="min-w-0">
@@ -348,7 +356,7 @@ export function JobBrowser() {
                 onChange={(event) =>
                   updateFilter(() => setPostedBefore(event.target.value))
                 }
-                className="h-10 w-full min-w-0 rounded-lg border border-input bg-input/40 px-2 text-xs outline-none transition focus:border-ring focus:bg-background focus:ring-2 focus:ring-ring/15"
+                className="h-10 w-full min-w-0 rounded-md border border-input/60 bg-input/40 px-2 text-xs font-medium text-foreground outline-none transition focus:border-primary focus:bg-background focus:ring-2 focus:ring-primary/20"
               />
             </label>
           </div>
@@ -380,7 +388,7 @@ export function JobBrowser() {
 
       <header className="sticky top-0 z-30 border-b border-border/70 bg-background/90 backdrop-blur-xl">
         <div className="mx-auto flex h-14 max-w-[1440px] items-center gap-2 px-3 sm:gap-5 sm:px-7 lg:px-10">
-          <nav aria-label="Job views" className="flex h-full items-center gap-0.5 sm:gap-1">
+          <nav aria-label="Job views" className="flex h-full items-center gap-1">
             <button
               type="button"
               onClick={() => {
@@ -388,10 +396,10 @@ export function JobBrowser() {
                 setPage(1);
               }}
               aria-pressed={mode === "all"}
-              className={`relative inline-flex h-9 items-center gap-2 rounded-md px-2.5 text-sm transition-colors sm:px-3 ${
+              className={`relative inline-flex h-full items-center gap-2 border-b-2 px-3 text-sm font-medium transition-colors ${
                 mode === "all"
-                  ? "bg-secondary font-semibold text-secondary-foreground"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  ? "border-primary text-foreground"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
               }`}
             >
               Explore
@@ -403,15 +411,19 @@ export function JobBrowser() {
                 setPage(1);
               }}
               aria-pressed={mode === "saved"}
-              className={`relative inline-flex h-9 items-center gap-2 rounded-md px-2.5 text-sm transition-colors sm:px-3 ${
+              className={`relative inline-flex h-full items-center gap-2 border-b-2 px-3 text-sm font-medium transition-colors ${
                 mode === "saved"
-                  ? "bg-secondary font-semibold text-secondary-foreground"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  ? "border-primary text-foreground"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
               }`}
             >
               Saved
               {bookmarkCount > 0 && (
-                <span className="rounded bg-foreground/10 px-1.5 py-0.5 text-[11px] tabular-nums text-muted-foreground">
+                <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold tabular-nums transition-colors ${
+                  mode === "saved"
+                    ? "bg-primary/15 text-primary"
+                    : "bg-muted text-muted-foreground"
+                }`}>
                   {bookmarkCount}
                 </span>
               )}
@@ -430,7 +442,7 @@ export function JobBrowser() {
         </h1>
 
         <form
-          className="grid gap-2 rounded-lg border border-border bg-card p-1.5 sm:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)_auto] sm:items-center sm:p-2"
+          className="grid gap-2 rounded-lg border border-border/80 bg-card p-1.5 shadow-[0_1px_3px_rgba(0,0,0,0.12),0_1px_2px_rgba(0,0,0,0.24)] sm:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)_auto] sm:items-center sm:p-2"
           onSubmit={(event) => {
             event.preventDefault();
             setPage(1);
@@ -450,7 +462,7 @@ export function JobBrowser() {
               value={query}
               onChange={(event) => updateFilter(() => setQuery(event.target.value))}
               placeholder="Role, skill, or company"
-              className="h-11 w-full rounded-md border border-transparent bg-input/55 pl-11 pr-3 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:bg-background focus:ring-2 focus:ring-ring/15 sm:h-12"
+              className="h-11 w-full rounded-md border border-input/60 bg-input/40 pl-11 pr-3 text-sm outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-primary focus:bg-background focus:ring-2 focus:ring-primary/20 sm:h-12"
             />
           </label>
           <label className="relative block min-w-0">
@@ -463,12 +475,12 @@ export function JobBrowser() {
               value={location}
               onChange={(event) => updateFilter(() => setLocation(event.target.value))}
               placeholder="City, country, or remote"
-              className="h-11 w-full rounded-md border border-transparent bg-input/55 pl-11 pr-3 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:bg-background focus:ring-2 focus:ring-ring/15 sm:h-12"
+              className="h-11 w-full rounded-md border border-input/60 bg-input/40 pl-11 pr-3 text-sm outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-primary focus:bg-background focus:ring-2 focus:ring-primary/20 sm:h-12"
             />
           </label>
           <button
             type="submit"
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-primary px-6 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:h-12"
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-sm transition-all hover:bg-primary/90 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:h-12"
           >
             <Search aria-hidden="true" className="size-4" />
             Search roles
@@ -575,13 +587,16 @@ export function JobBrowser() {
                 return (
                   <article
                     key={key}
-                    className="group rounded-lg border border-border/80 bg-card px-4 py-4 transition-colors hover:border-foreground/20 sm:px-5 sm:py-5"
+                    className="group relative rounded-lg border border-border/70 bg-card p-4 transition-all duration-150 hover:border-primary/40 hover:bg-card/90 hover:shadow-[0_4px_20px_-4px_rgba(0,0,0,0.35)] sm:p-5"
                   >
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-5">
-                      <div className="min-w-0">
-                        <div className="mb-1.5 flex flex-wrap items-center gap-x-2 gap-y-1.5 text-xs">
-                          <span className="inline-flex min-w-0 items-center gap-1.5 font-medium text-foreground">
-                            <Building2 aria-hidden="true" className="size-3.5 shrink-0" />
+                      <div className="min-w-0 flex-1">
+                        <div className="mb-2 flex flex-wrap items-center gap-2 text-xs">
+                          <span className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-medium ${providerBadgeStyles[job.provider] || "border-border bg-muted text-muted-foreground"}`}>
+                            {providerLabels[job.provider]}
+                          </span>
+                          <span className="inline-flex min-w-0 items-center gap-1.5 font-medium text-foreground/90">
+                            <Building2 aria-hidden="true" className="size-3.5 shrink-0 text-muted-foreground" />
                             <span className="truncate">
                               {job.company_name || job.company_slug}
                             </span>
@@ -593,45 +608,44 @@ export function JobBrowser() {
                           )}
                         </div>
 
-                        <h2 className="mt-2 text-[17px] font-semibold leading-snug tracking-[-0.025em] sm:text-[18px]">
+                        <h2 className="text-[17px] font-semibold leading-snug tracking-[-0.02em] text-foreground group-hover:text-primary transition-colors sm:text-[18px]">
                           {job.title || "Untitled role"}
                         </h2>
 
                         <div className="mt-2.5 flex flex-wrap gap-x-4 gap-y-2 text-[13px] text-muted-foreground">
                           {job.location_name && (
                             <span className="inline-flex items-center gap-1.5">
-                              <MapPin aria-hidden="true" className="size-3.5" />
+                              <MapPin aria-hidden="true" className="size-3.5 text-muted-foreground/80" />
                               {job.location_name}
                             </span>
                           )}
                           {job.employment_type && (
                             <span className="inline-flex items-center gap-1.5">
-                              <BriefcaseBusiness aria-hidden="true" className="size-3.5" />
+                              <BriefcaseBusiness aria-hidden="true" className="size-3.5 text-muted-foreground/80" />
                               {job.employment_type}
                             </span>
                           )}
                           {job.workplace_type && (
-                            <span>{formatLabel(job.workplace_type)}</span>
+                            <span className="inline-flex items-center rounded bg-secondary/80 px-1.5 py-0.5 text-[11px] font-medium text-secondary-foreground">
+                              {formatLabel(job.workplace_type)}
+                            </span>
                           )}
                           {job.first_published && (
                             <span className="inline-flex items-center gap-1.5 tabular-nums">
-                              <CalendarDays aria-hidden="true" className="size-3.5" />
+                              <CalendarDays aria-hidden="true" className="size-3.5 text-muted-foreground/80" />
                               {formatDate(job.first_published)}
                             </span>
                           )}
-                          <span className="text-[11px] text-muted-foreground/75">
-                            via {providerLabels[job.provider]}
-                          </span>
                         </div>
 
                         {(job.department || job.experience || job.education) && (
-                          <div className="mt-2.5 flex flex-wrap gap-1.5">
+                          <div className="mt-3 flex flex-wrap gap-1.5">
                             {[job.department, job.experience, job.education]
                               .filter(Boolean)
                               .map((item) => (
                                 <span
                                   key={item}
-                                  className="rounded-md border border-border/60 bg-secondary/65 px-2 py-1 text-[11px] font-medium text-secondary-foreground"
+                                  className="rounded-md border border-border/70 bg-secondary/40 px-2 py-0.5 text-[11px] font-medium text-muted-foreground"
                                 >
                                   {item}
                                 </span>
@@ -649,13 +663,13 @@ export function JobBrowser() {
                           onClick={() => void toggleBookmark(job)}
                           className={`inline-flex size-10 shrink-0 items-center justify-center rounded-md border transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-50 ${
                             isSaved
-                              ? "border-foreground/20 bg-foreground/5 text-foreground"
-                              : "bg-background text-muted-foreground"
+                              ? "border-primary/40 bg-primary/10 text-primary"
+                              : "border-border/70 bg-card text-muted-foreground hover:text-foreground"
                           }`}
                         >
                           <Bookmark
                             aria-hidden="true"
-                            className={`size-4 ${isSaved ? "fill-current" : ""}`}
+                            className={`size-4 ${isSaved ? "fill-primary" : ""}`}
                           />
                         </button>
                         {primaryUrl && (
@@ -814,7 +828,7 @@ function FilterSelect({
         <select
           value={value}
           onChange={(event) => onChange(event.target.value)}
-          className="h-10 w-full appearance-none rounded-lg border border-input bg-input/40 pl-3 pr-9 text-xs outline-none transition focus:border-ring focus:bg-background focus:ring-2 focus:ring-ring/15"
+          className="h-10 w-full appearance-none rounded-md border border-input/60 bg-input/40 pl-3 pr-9 text-xs font-medium text-foreground outline-none transition focus:border-primary focus:bg-background focus:ring-2 focus:ring-primary/20"
         >
           {options.map((option) => (
             <option key={option.value} value={option.value}>
