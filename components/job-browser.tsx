@@ -17,7 +17,7 @@ import {
   X,
 } from "lucide-react";
 import { Dialog } from "@base-ui/react/dialog";
-import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { ThemeToggle } from "@/components/theme-toggle";
 import {
@@ -282,304 +282,309 @@ export function JobBrowser() {
   const firstResult = total === 0 ? 0 : (page - 1) * pageSize + 1;
   const lastResult = Math.min((page - 1) * pageSize + jobs.length, total);
 
-  const filterPanel = (closeControl?: ReactNode, title?: ReactNode) => (
-    <div className="rounded-lg border border-border/80 bg-card p-4 sm:p-5">
-      <div className="mb-5 flex items-center justify-between gap-3">
-        {title ?? (
-          <h2 className="flex items-center gap-2 text-sm font-semibold">
-            <SlidersHorizontal aria-hidden="true" className="size-4 text-primary" />
-            Refine search
-          </h2>
-        )}
-        <div className="flex items-center gap-1">
-          <button
-            type="button"
-            disabled={activeFilters.length === 0}
-            className="inline-flex min-h-10 items-center rounded-md px-2 text-xs font-medium text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline disabled:cursor-not-allowed disabled:opacity-40"
-            onClick={clearFilters}
-          >
-            Clear
-          </button>
-          {closeControl}
-        </div>
-      </div>
 
-      <div className="space-y-5">
-        <FilterSelect
-          label="Platform"
-          value={provider}
-          onChange={(value) => updateFilter(() => setProvider(value))}
-          options={[
-            { value: "", label: "All platforms" },
-            ...providers.map((item) => ({
-              value: item,
-              label: providerLabels[item],
-            })),
-          ]}
-        />
-        <FilterSelect
-          label="Employment"
-          value={employment}
-          onChange={(value) => updateFilter(() => setEmployment(value))}
-          options={employmentOptions}
-        />
-        <FilterSelect
-          label="Workplace"
-          value={workplace}
-          onChange={(value) => updateFilter(() => setWorkplace(value))}
-          options={workplaceOptions}
-        />
-
-        <fieldset>
-          <legend className="mb-2 block text-xs font-medium text-muted-foreground">
-            Posted between
-          </legend>
-          <div className="grid grid-cols-2 gap-2">
-            <label className="min-w-0">
-              <span className="sr-only">Posted after</span>
-              <input
-                aria-label="Posted after"
-                type="date"
-                value={postedAfter}
-                onChange={(event) =>
-                  updateFilter(() => setPostedAfter(event.target.value))
-                }
-                className="h-10 w-full min-w-0 rounded-md border border-input/60 bg-input/40 px-2 text-xs font-medium text-foreground outline-none transition focus:border-primary focus:bg-background focus:ring-2 focus:ring-primary/20"
-              />
-            </label>
-            <label className="min-w-0">
-              <span className="sr-only">Posted before</span>
-              <input
-                aria-label="Posted before"
-                type="date"
-                value={postedBefore}
-                onChange={(event) =>
-                  updateFilter(() => setPostedBefore(event.target.value))
-                }
-                className="h-10 w-full min-w-0 rounded-md border border-input/60 bg-input/40 px-2 text-xs font-medium text-foreground outline-none transition focus:border-primary focus:bg-background focus:ring-2 focus:ring-primary/20"
-              />
-            </label>
-          </div>
-        </fieldset>
-
-        <label className="flex min-h-10 cursor-pointer items-start gap-2.5 border-t border-border/70 pt-4 text-xs leading-5 text-muted-foreground">
-          <input
-            type="checkbox"
-            checked={includeDescriptions}
-            onChange={(event) =>
-              updateFilter(() => setIncludeDescriptions(event.target.checked))
-            }
-            className="mt-0.5 size-4 shrink-0 accent-primary"
-          />
-          Search inside job descriptions
-        </label>
-      </div>
-    </div>
-  );
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background text-foreground antialiased selection:bg-primary/20 selection:text-foreground">
       <a
         href="#results"
-        className="sr-only z-50 rounded-md border bg-background px-3 py-2 text-sm shadow-md focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="sr-only z-50 rounded-xl border bg-background px-4 py-2 text-sm shadow-lg focus:not-sr-only focus:fixed focus:left-6 focus:top-6 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         Skip to job results
       </a>
 
-      <header className="sticky top-0 z-30 border-b border-border/70 bg-background/90 backdrop-blur-xl">
-        <div className="mx-auto flex h-14 max-w-[1440px] items-center gap-2 px-3 sm:gap-5 sm:px-7 lg:px-10">
-          <nav aria-label="Job views" className="flex h-full items-center gap-1">
-            <button
-              type="button"
-              onClick={() => {
-                setMode("all");
-                setPage(1);
-              }}
-              aria-pressed={mode === "all"}
-              className={`relative inline-flex h-full items-center gap-2 border-b-2 px-3 text-sm font-medium transition-colors ${
-                mode === "all"
-                  ? "border-primary text-foreground"
-                  : "border-transparent text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              Explore
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setMode("saved");
-                setPage(1);
-              }}
-              aria-pressed={mode === "saved"}
-              className={`relative inline-flex h-full items-center gap-2 border-b-2 px-3 text-sm font-medium transition-colors ${
-                mode === "saved"
-                  ? "border-primary text-foreground"
-                  : "border-transparent text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              Saved
-              {bookmarkCount > 0 && (
-                <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold tabular-nums transition-colors ${
-                  mode === "saved"
-                    ? "bg-primary/15 text-primary"
-                    : "bg-muted text-muted-foreground"
-                }`}>
-                  {bookmarkCount}
-                </span>
-              )}
-            </button>
-          </nav>
-          <div className="ml-auto">
-            <ThemeToggle />
-          </div>
-        </div>
-      </header>
-
-      <main className="mx-auto max-w-[1440px] px-4 pb-16 pt-5 sm:px-7 sm:pt-10 lg:px-10">
-        <Dialog.Root open={showFilters} onOpenChange={setShowFilters}>
-        <h1 className="sr-only">
-          {mode === "saved" ? "Saved roles" : "Search roles"}
-        </h1>
-
-        <form
-          className="grid gap-2 rounded-lg border border-border/80 bg-card p-1.5 shadow-[0_1px_3px_rgba(0,0,0,0.12),0_1px_2px_rgba(0,0,0,0.24)] sm:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)_auto] sm:items-center sm:p-2"
-          onSubmit={(event) => {
-            event.preventDefault();
-            setPage(1);
-            setRefreshKey((current) => current + 1);
-          }}
-          role="search"
-          aria-label="Search jobs"
-        >
-          <label className="relative block min-w-0">
-            <span className="sr-only">Keywords</span>
-            <Search
-              aria-hidden="true"
-              className="absolute left-4 top-1/2 size-[17px] -translate-y-1/2 text-muted-foreground"
-            />
-            <input
-              type="search"
-              value={query}
-              onChange={(event) => updateFilter(() => setQuery(event.target.value))}
-              placeholder="Role, skill, or company"
-              className="h-11 w-full rounded-md border border-input/60 bg-input/40 pl-11 pr-3 text-sm outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-primary focus:bg-background focus:ring-2 focus:ring-primary/20 sm:h-12"
-            />
-          </label>
-          <label className="relative block min-w-0">
-            <span className="sr-only">Location</span>
-            <MapPin
-              aria-hidden="true"
-              className="absolute left-4 top-1/2 size-[17px] -translate-y-1/2 text-muted-foreground"
-            />
-            <input
-              value={location}
-              onChange={(event) => updateFilter(() => setLocation(event.target.value))}
-              placeholder="City, country, or remote"
-              className="h-11 w-full rounded-md border border-input/60 bg-input/40 pl-11 pr-3 text-sm outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-primary focus:bg-background focus:ring-2 focus:ring-primary/20 sm:h-12"
-            />
-          </label>
-          <button
-            type="submit"
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-sm transition-all hover:bg-primary/90 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:h-12"
-          >
-            <Search aria-hidden="true" className="size-4" />
-            Search roles
-          </button>
-        </form>
-
-        <div className="mb-3 mt-4 flex min-h-10 flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-border/70 pb-2 sm:mb-4 sm:mt-7 sm:pb-4">
-          <p className="text-sm text-muted-foreground" aria-live="polite" aria-atomic="true">
-            {loading ? (
-              <span className="inline-flex items-center gap-2">
-                <LoaderCircle aria-hidden="true" className="size-3.5 animate-spin" />
-                Updating results
+      {/* Main Apple/Ive floating workspace layout */}
+      <div className="mx-auto flex min-h-screen max-w-[1520px] flex-col p-3 sm:p-5 lg:flex-row lg:gap-6 lg:p-8">
+        
+        {/* Left Sidebar Navigation & Controls */}
+        <aside className="mb-4 flex w-full shrink-0 flex-col justify-between rounded-2xl border border-border/60 bg-card/70 p-5 backdrop-blur-xl lg:mb-0 lg:w-72 lg:rounded-3xl lg:p-7">
+          <div className="space-y-6">
+            {/* Top header navigation */}
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground/80">
+                Job Search
               </span>
-            ) : (
-              <>
-                <span className="font-semibold tabular-nums text-foreground">
-                  {total.toLocaleString()}
-                </span>{" "}
-                {total === 1 ? "open role" : "open roles"}
-                {jobs.length > 0 && (
-                  <span className="ml-2 text-muted-foreground/80">
-                    · Showing {firstResult}–{lastResult}
+              <ThemeToggle />
+            </div>
+
+            {/* View switcher */}
+            <nav aria-label="Job views" className="flex flex-col gap-1.5">
+              <button
+                type="button"
+                onClick={() => {
+                  setMode("all");
+                  setPage(1);
+                }}
+                aria-pressed={mode === "all"}
+                className={`flex h-11 items-center justify-between rounded-xl px-3.5 text-sm font-medium transition-all ${
+                  mode === "all"
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground"
+                }`}
+              >
+                <span className="flex items-center gap-2.5">
+                  <BriefcaseBusiness aria-hidden="true" className="size-4" />
+                  Explore roles
+                </span>
+                <span className="text-xs opacity-75 tabular-nums">
+                  {total > 0 ? total.toLocaleString() : ""}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setMode("saved");
+                  setPage(1);
+                }}
+                aria-pressed={mode === "saved"}
+                className={`flex h-11 items-center justify-between rounded-xl px-3.5 text-sm font-medium transition-all ${
+                  mode === "saved"
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground"
+                }`}
+              >
+                <span className="flex items-center gap-2.5">
+                  <Bookmark aria-hidden="true" className="size-4" />
+                  Saved roles
+                </span>
+                {bookmarkCount > 0 && (
+                  <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold tabular-nums ${
+                    mode === "saved"
+                      ? "bg-primary-foreground/20 text-primary-foreground"
+                      : "bg-secondary text-muted-foreground"
+                  }`}>
+                    {bookmarkCount}
                   </span>
                 )}
-              </>
-            )}
-          </p>
+              </button>
+            </nav>
 
-          <div className="flex items-center gap-3">
-            <Dialog.Trigger
-              aria-controls="job-filters"
-              className="inline-flex h-10 items-center gap-2 rounded-lg border border-border/80 bg-card px-3 text-xs font-medium text-foreground transition-colors hover:bg-muted lg:hidden"
-            >
-              <SlidersHorizontal aria-hidden="true" className="size-3.5" />
-              Filters
-              {activeFilters.length > 0 && (
-                <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] text-primary">
-                  {activeFilters.length}
+            {/* Desktop Filters section in sidebar */}
+            <div className="hidden lg:block lg:border-t lg:border-border/60 lg:pt-6">
+              <div className="mb-4 flex items-center justify-between">
+                <span className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground/80">
+                  <SlidersHorizontal aria-hidden="true" className="size-3.5 text-primary" />
+                  Filter Search
                 </span>
-              )}
-            </Dialog.Trigger>
-            <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-              <ArrowDownUp aria-hidden="true" className="size-3.5" />
-              Newest first
-            </span>
+                {activeFilters.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={clearFilters}
+                    className="text-xs font-medium text-primary hover:underline"
+                  >
+                    Reset
+                  </button>
+                )}
+              </div>
+              <div className="space-y-4">
+                <FilterSelect
+                  label="Platform"
+                  value={provider}
+                  onChange={(value) => updateFilter(() => setProvider(value))}
+                  options={[
+                    { value: "", label: "All platforms" },
+                    ...providers.map((item) => ({
+                      value: item,
+                      label: providerLabels[item],
+                    })),
+                  ]}
+                />
+                <FilterSelect
+                  label="Employment"
+                  value={employment}
+                  onChange={(value) => updateFilter(() => setEmployment(value))}
+                  options={employmentOptions}
+                />
+                <FilterSelect
+                  label="Workplace"
+                  value={workplace}
+                  onChange={(value) => updateFilter(() => setWorkplace(value))}
+                  options={workplaceOptions}
+                />
+
+                <fieldset className="space-y-1.5">
+                  <legend className="block text-xs font-medium text-muted-foreground">
+                    Posted between
+                  </legend>
+                  <div className="grid grid-cols-2 gap-2">
+                    <input
+                      aria-label="Posted after"
+                      type="date"
+                      value={postedAfter}
+                      onChange={(event) =>
+                        updateFilter(() => setPostedAfter(event.target.value))
+                      }
+                      className="h-9 w-full rounded-xl border border-input bg-input/40 px-2 text-xs font-medium text-foreground outline-none transition focus:border-primary focus:bg-background focus:ring-2 focus:ring-primary/20"
+                    />
+                    <input
+                      aria-label="Posted before"
+                      type="date"
+                      value={postedBefore}
+                      onChange={(event) =>
+                        updateFilter(() => setPostedBefore(event.target.value))
+                      }
+                      className="h-9 w-full rounded-xl border border-input bg-input/40 px-2 text-xs font-medium text-foreground outline-none transition focus:border-primary focus:bg-background focus:ring-2 focus:ring-primary/20"
+                    />
+                  </div>
+                </fieldset>
+
+                <label className="flex cursor-pointer items-center gap-2.5 pt-2 text-xs text-muted-foreground hover:text-foreground">
+                  <input
+                    type="checkbox"
+                    checked={includeDescriptions}
+                    onChange={(event) =>
+                      updateFilter(() => setIncludeDescriptions(event.target.checked))
+                    }
+                    className="size-4 rounded-md accent-[#A8DADC]"
+                  />
+                  Search within description
+                </label>
+              </div>
+            </div>
           </div>
-        </div>
 
-        <div className="grid items-start gap-5 lg:grid-cols-[248px_minmax(0,1fr)] lg:gap-8">
-          <aside
-            id="job-filters"
-            aria-label="Job filters"
-            className="hidden min-w-0 lg:sticky lg:top-20 lg:block"
-          >
-            {filterPanel()}
-          </aside>
+          <div className="hidden border-t border-border/50 pt-4 text-[11px] text-muted-foreground/60 lg:block">
+            <span>Powered by Turso Database</span>
+          </div>
+        </aside>
 
-          <section
-            id="results"
-            tabIndex={-1}
-            aria-label="Job results"
-            aria-busy={loading}
-            className="min-w-0"
-          >
+        {/* Right Main Content Canvas */}
+        <main className="flex min-w-0 flex-1 flex-col rounded-2xl border border-border/60 bg-card/50 p-4 backdrop-blur-xl sm:p-6 lg:rounded-3xl lg:p-8">
+          <Dialog.Root open={showFilters} onOpenChange={setShowFilters}>
+            <h1 className="sr-only">
+              {mode === "saved" ? "Saved roles" : "Search roles"}
+            </h1>
+
+            {/* Apple-style Unified Search Pill */}
+            <form
+              className="group flex flex-col gap-2 rounded-2xl border border-border/70 bg-card p-2 shadow-[0_2px_12px_rgba(0,0,0,0.06)] transition-all focus-within:border-primary/60 focus-within:shadow-[0_4px_24px_rgba(0,0,0,0.1)] sm:flex-row sm:items-center sm:gap-3 sm:rounded-full sm:p-2 sm:pl-5"
+              onSubmit={(event) => {
+                event.preventDefault();
+                setPage(1);
+                setRefreshKey((current) => current + 1);
+              }}
+              role="search"
+              aria-label="Search jobs"
+            >
+              <div className="flex flex-1 items-center gap-3">
+                <Search aria-hidden="true" className="size-4 shrink-0 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                <input
+                  type="search"
+                  value={query}
+                  onChange={(event) => updateFilter(() => setQuery(event.target.value))}
+                  placeholder="Role title, keywords, or company..."
+                  className="h-10 w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground/60"
+                />
+              </div>
+
+              <div className="hidden h-5 w-px bg-border/80 sm:block" />
+
+              <div className="flex flex-1 items-center gap-3 px-1 sm:px-0">
+                <MapPin aria-hidden="true" className="size-4 shrink-0 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                <input
+                  value={location}
+                  onChange={(event) => updateFilter(() => setLocation(event.target.value))}
+                  placeholder="City, country, or remote..."
+                  className="h-10 w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground/60"
+                />
+              </div>
+
+              <div className="flex items-center gap-2 pt-1 sm:pt-0">
+                <Dialog.Trigger
+                  aria-controls="job-filters"
+                  className="inline-flex h-10 items-center gap-1.5 rounded-full border border-border/80 bg-secondary/60 px-3.5 text-xs font-medium text-foreground transition-all hover:bg-secondary lg:hidden"
+                >
+                  <SlidersHorizontal aria-hidden="true" className="size-3.5" />
+                  Filters
+                  {activeFilters.length > 0 && (
+                    <span className="rounded-full bg-primary px-1.5 py-0.2 text-[10px] font-semibold text-primary-foreground">
+                      {activeFilters.length}
+                    </span>
+                  )}
+                </Dialog.Trigger>
+
+                <button
+                  type="submit"
+                  className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-full bg-primary px-6 text-xs font-semibold text-primary-foreground shadow-sm transition-all hover:opacity-90 hover:shadow-md sm:w-auto"
+                >
+                  Search
+                </button>
+              </div>
+            </form>
+
+            {/* Stats row & active filters */}
+            <div className="mb-4 mt-6 flex flex-wrap items-center justify-between gap-3 border-b border-border/40 pb-3">
+              <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+                {loading ? (
+                  <span className="inline-flex items-center gap-2">
+                    <LoaderCircle aria-hidden="true" className="size-3.5 animate-spin text-primary" />
+                    Fetching roles...
+                  </span>
+                ) : (
+                  <>
+                    <span className="font-semibold tabular-nums text-foreground">
+                      {total.toLocaleString()}
+                    </span>
+                    <span>open positions</span>
+                    {jobs.length > 0 && (
+                      <span className="text-muted-foreground/60">
+                        (showing {firstResult}–{lastResult})
+                      </span>
+                    )}
+                  </>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <ArrowDownUp aria-hidden="true" className="size-3.5" />
+                <span>Most recent first</span>
+              </div>
+            </div>
+
+            {/* Active filter badges */}
             {activeFilters.length > 0 && (
               <div className="mb-4 flex flex-wrap items-center gap-2" aria-label="Active filters">
-                <span className="mr-1 text-xs text-muted-foreground">Filtered by</span>
+                <span className="text-xs text-muted-foreground/75">Active:</span>
                 {activeFilters.map((filter) => (
                   <button
                     key={filter.id}
                     type="button"
                     onClick={() => removeFilter(filter.id)}
                     aria-label={`Remove ${filter.label} filter`}
-                    className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border/80 bg-card px-2.5 text-xs text-foreground transition-colors hover:border-primary/40 hover:bg-muted"
+                    className="inline-flex h-7 items-center gap-1.5 rounded-full border border-border/70 bg-card px-3 text-xs text-foreground transition-all hover:border-primary/40 hover:bg-secondary/40"
                   >
-                    {filter.label}
+                    <span>{filter.label}</span>
                     <X aria-hidden="true" className="size-3 text-muted-foreground" />
                   </button>
                 ))}
               </div>
             )}
 
-            {error && (
-              <div
-                role="alert"
-                className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-md border border-destructive/25 bg-destructive/5 px-4 py-3 text-sm text-destructive"
-              >
-                <span>{error}</span>
-                <button
-                  type="button"
-                  onClick={() => setRefreshKey((current) => current + 1)}
-                  className="font-semibold underline underline-offset-4"
+            {/* Job results stream */}
+            <section
+              id="results"
+              tabIndex={-1}
+              aria-label="Job results"
+              aria-busy={loading}
+              className="flex-1 space-y-3.5"
+            >
+              {error && (
+                <div
+                  role="alert"
+                  className="flex items-center justify-between rounded-2xl border border-destructive/25 bg-destructive/10 px-4 py-3 text-xs text-destructive"
                 >
-                  Try again
-                </button>
-              </div>
-            )}
+                  <span>{error}</span>
+                  <button
+                    type="button"
+                    onClick={() => setRefreshKey((current) => current + 1)}
+                    className="font-semibold underline underline-offset-4"
+                  >
+                    Retry
+                  </button>
+                </div>
+              )}
 
-            <div className="space-y-3" aria-busy={loading}>
               {jobs.map((job) => {
                 const key = jobKey(job);
                 const isSaved = Number(job.is_bookmarked) === 1;
@@ -587,223 +592,301 @@ export function JobBrowser() {
                 return (
                   <article
                     key={key}
-                    className="group relative rounded-lg border border-border/70 bg-card p-4 transition-all duration-150 hover:border-primary/40 hover:bg-card/90 hover:shadow-[0_4px_20px_-4px_rgba(0,0,0,0.35)] sm:p-5"
+                    className="group relative flex flex-col justify-between rounded-2xl border border-border/60 bg-card/90 p-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/50 hover:bg-card hover:shadow-[0_8px_30px_rgb(0,0,0,0.12)] sm:flex-row sm:items-center sm:gap-6"
                   >
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-5">
-                      <div className="min-w-0 flex-1">
-                        <div className="mb-2 flex flex-wrap items-center gap-2 text-xs">
-                          <span className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-medium ${providerBadgeStyles[job.provider] || "border-border bg-muted text-muted-foreground"}`}>
-                            {providerLabels[job.provider]}
+                    <div className="min-w-0 flex-1">
+                      {/* Top meta tags */}
+                      <div className="mb-2 flex flex-wrap items-center gap-2">
+                        <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[10px] font-semibold tracking-wide ${providerBadgeStyles[job.provider] || "border-border bg-muted text-muted-foreground"}`}>
+                          {providerLabels[job.provider]}
+                        </span>
+
+                        <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-foreground/80">
+                          <Building2 aria-hidden="true" className="size-3.5 text-muted-foreground" />
+                          <span className="truncate">{job.company_name || job.company_slug}</span>
+                        </span>
+
+                        {job.workplace_type && (
+                          <span className="inline-flex items-center rounded-full bg-secondary/80 px-2 py-0.5 text-[10px] font-medium text-secondary-foreground">
+                            {formatLabel(job.workplace_type)}
                           </span>
-                          <span className="inline-flex min-w-0 items-center gap-1.5 font-medium text-foreground/90">
-                            <Building2 aria-hidden="true" className="size-3.5 shrink-0 text-muted-foreground" />
-                            <span className="truncate">
-                              {job.company_name || job.company_slug}
-                            </span>
+                        )}
+
+                        {Number(job.is_available) !== 1 && (
+                          <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                            Expired
                           </span>
-                          {Number(job.is_available) !== 1 && (
-                            <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
-                              No longer listed
-                            </span>
-                          )}
-                        </div>
-
-                        <h2 className="text-[17px] font-semibold leading-snug tracking-[-0.02em] text-foreground group-hover:text-primary transition-colors sm:text-[18px]">
-                          {job.title || "Untitled role"}
-                        </h2>
-
-                        <div className="mt-2.5 flex flex-wrap gap-x-4 gap-y-2 text-[13px] text-muted-foreground">
-                          {job.location_name && (
-                            <span className="inline-flex items-center gap-1.5">
-                              <MapPin aria-hidden="true" className="size-3.5 text-muted-foreground/80" />
-                              {job.location_name}
-                            </span>
-                          )}
-                          {job.employment_type && (
-                            <span className="inline-flex items-center gap-1.5">
-                              <BriefcaseBusiness aria-hidden="true" className="size-3.5 text-muted-foreground/80" />
-                              {job.employment_type}
-                            </span>
-                          )}
-                          {job.workplace_type && (
-                            <span className="inline-flex items-center rounded bg-secondary/80 px-1.5 py-0.5 text-[11px] font-medium text-secondary-foreground">
-                              {formatLabel(job.workplace_type)}
-                            </span>
-                          )}
-                          {job.first_published && (
-                            <span className="inline-flex items-center gap-1.5 tabular-nums">
-                              <CalendarDays aria-hidden="true" className="size-3.5 text-muted-foreground/80" />
-                              {formatDate(job.first_published)}
-                            </span>
-                          )}
-                        </div>
-
-                        {(job.department || job.experience || job.education) && (
-                          <div className="mt-3 flex flex-wrap gap-1.5">
-                            {[job.department, job.experience, job.education]
-                              .filter(Boolean)
-                              .map((item) => (
-                                <span
-                                  key={item}
-                                  className="rounded-md border border-border/70 bg-secondary/40 px-2 py-0.5 text-[11px] font-medium text-muted-foreground"
-                                >
-                                  {item}
-                                </span>
-                              ))}
-                          </div>
                         )}
                       </div>
 
-                      <div className="flex w-full shrink-0 items-center gap-2 sm:w-auto sm:pt-0.5">
-                        <button
-                          type="button"
-                          aria-label={`${isSaved ? "Remove saved role" : "Save role"}: ${job.title || "Untitled role"}`}
-                          aria-pressed={isSaved}
-                          disabled={busyJobs.has(key)}
-                          onClick={() => void toggleBookmark(job)}
-                          className={`inline-flex size-10 shrink-0 items-center justify-center rounded-md border transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-50 ${
-                            isSaved
-                              ? "border-primary/40 bg-primary/10 text-primary"
-                              : "border-border/70 bg-card text-muted-foreground hover:text-foreground"
-                          }`}
-                        >
-                          <Bookmark
-                            aria-hidden="true"
-                            className={`size-4 ${isSaved ? "fill-primary" : ""}`}
-                          />
-                        </button>
-                        {primaryUrl && (
-                          <a
-                            href={primaryUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-md bg-primary px-4 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:flex-none"
-                          >
-                            {job.apply_url ? "Apply" : "View role"}
-                            <ExternalLink aria-hidden="true" className="size-3.5" />
-                          </a>
+                      {/* Role title */}
+                      <h2 className="text-base font-semibold leading-snug tracking-[-0.015em] text-foreground transition-colors group-hover:text-primary sm:text-lg">
+                        {job.title || "Untitled position"}
+                      </h2>
+
+                      {/* Supporting location & date */}
+                      <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted-foreground">
+                        {job.location_name && (
+                          <span className="inline-flex items-center gap-1.5">
+                            <MapPin aria-hidden="true" className="size-3.5 text-muted-foreground/70" />
+                            {job.location_name}
+                          </span>
+                        )}
+                        {job.employment_type && (
+                          <span className="inline-flex items-center gap-1.5">
+                            <BriefcaseBusiness aria-hidden="true" className="size-3.5 text-muted-foreground/70" />
+                            {job.employment_type}
+                          </span>
+                        )}
+                        {job.first_published && (
+                          <span className="inline-flex items-center gap-1.5 tabular-nums">
+                            <CalendarDays aria-hidden="true" className="size-3.5 text-muted-foreground/70" />
+                            {formatDate(job.first_published)}
+                          </span>
                         )}
                       </div>
+
+                      {/* Skill tags */}
+                      {(job.department || job.experience || job.education) && (
+                        <div className="mt-3 flex flex-wrap gap-1.5">
+                          {[job.department, job.experience, job.education]
+                            .filter(Boolean)
+                            .map((item) => (
+                              <span
+                                key={item}
+                                className="rounded-full border border-border/50 bg-secondary/30 px-2.5 py-0.5 text-[10px] font-medium text-muted-foreground"
+                              >
+                                {item}
+                              </span>
+                            ))}
+                        </div>
+                      )}
+
+                      {/* Expandable description */}
+                      {job.description && (
+                        <details className="group/desc mt-3 border-t border-border/40 pt-2">
+                          <summary className="flex cursor-pointer items-center gap-1.5 text-xs font-medium text-muted-foreground/80 hover:text-foreground">
+                            <span>Job brief</span>
+                            <ChevronDown className="size-3.5 transition-transform group-open/desc:rotate-180" />
+                          </summary>
+                          <p className="mt-2 whitespace-pre-wrap text-xs leading-relaxed text-muted-foreground">
+                            {job.description}
+                          </p>
+                        </details>
+                      )}
                     </div>
 
-                    {job.description && (
-                      <details className="group/description mt-3 border-t border-border/70 pt-1">
-                        <summary className="flex min-h-8 w-fit cursor-pointer list-none items-center gap-1.5 rounded text-xs font-medium text-muted-foreground marker:hidden hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
-                          Job description
-                          <ChevronDown
-                            aria-hidden="true"
-                            className="size-3.5 transition-transform group-open/description:rotate-180"
-                          />
-                        </summary>
-                        <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-muted-foreground">
-                          {job.description}
-                        </p>
-                      </details>
-                    )}
+                    {/* Right action controls */}
+                    <div className="mt-4 flex items-center gap-2 sm:mt-0 sm:shrink-0">
+                      <button
+                        type="button"
+                        aria-label={`${isSaved ? "Remove saved role" : "Save role"}: ${job.title || "Untitled role"}`}
+                        aria-pressed={isSaved}
+                        disabled={busyJobs.has(key)}
+                        onClick={() => void toggleBookmark(job)}
+                        className={`inline-flex size-10 items-center justify-center rounded-full border transition-all disabled:opacity-40 ${
+                          isSaved
+                            ? "border-primary bg-primary/10 text-primary"
+                            : "border-border/70 bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground"
+                        }`}
+                      >
+                        <Bookmark
+                          aria-hidden="true"
+                          className={`size-4 ${isSaved ? "fill-primary" : ""}`}
+                        />
+                      </button>
+
+                      {primaryUrl && (
+                        <a
+                          href={primaryUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-full bg-primary px-5 text-xs font-semibold text-primary-foreground shadow-sm transition-all hover:opacity-90 hover:shadow-md sm:flex-none"
+                        >
+                          <span>{job.apply_url ? "Apply" : "View"}</span>
+                          <ExternalLink aria-hidden="true" className="size-3.5" />
+                        </a>
+                      )}
+                    </div>
                   </article>
                 );
               })}
 
+              {/* Empty state */}
               {!loading && !error && jobs.length === 0 && (
-                <div className="px-6 py-14 text-center sm:py-16">
-                  <span className="mx-auto mb-4 flex size-10 items-center justify-center rounded-md bg-muted text-muted-foreground">
+                <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-border/80 p-12 text-center">
+                  <div className="flex size-12 items-center justify-center rounded-full bg-secondary/80 text-muted-foreground">
                     {mode === "saved" ? (
-                      <Bookmark aria-hidden="true" className="size-4" />
+                      <Bookmark aria-hidden="true" className="size-5" />
                     ) : (
-                      <Search aria-hidden="true" className="size-4" />
+                      <Search aria-hidden="true" className="size-5" />
                     )}
-                  </span>
-                  <h2 className="text-sm font-semibold">
-                    {mode === "saved" ? "No saved roles yet" : "No roles found"}
-                  </h2>
-                  <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-muted-foreground">
+                  </div>
+                  <h3 className="mt-4 text-sm font-semibold text-foreground">
+                    {mode === "saved" ? "No bookmarks saved" : "No roles matched"}
+                  </h3>
+                  <p className="mt-1.5 max-w-sm text-xs leading-relaxed text-muted-foreground">
                     {mode === "saved"
-                      ? "Save a role from your search and it will be waiting here."
-                      : "Try another keyword or loosen a filter to see more results."}
+                      ? "Tap the bookmark icon on any job card to save it for quick reference later."
+                      : "Try loosening your keywords, locations, or platform filters to discover more open positions."}
                   </p>
                   {mode === "all" && activeFilters.length > 0 && (
                     <button
                       type="button"
                       onClick={clearFilters}
-                      className="mt-4 inline-flex h-10 items-center justify-center rounded-md border bg-background px-3 text-xs font-medium transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                      className="mt-5 inline-flex h-9 items-center justify-center rounded-full bg-secondary px-4 text-xs font-medium text-foreground transition-all hover:bg-secondary/80"
                     >
-                      Clear filters
+                      Clear all filters
                     </button>
                   )}
                 </div>
               )}
 
+              {/* Skeleton loading */}
               {loading && jobs.length === 0 && (
-                <div className="space-y-3" aria-hidden="true">
-                  {[0, 1, 2].map((item) => (
-                    <div key={item} className="min-h-56 space-y-4 rounded-lg border border-border/80 bg-card px-4 py-5 sm:px-5">
-                      <div className="h-3 w-36 animate-pulse rounded bg-muted" />
-                      <div className="h-5 w-3/5 animate-pulse rounded bg-muted" />
-                      <div className="h-3 w-2/5 animate-pulse rounded bg-muted" />
-                      <div className="h-10 w-28 animate-pulse rounded-md bg-muted" />
+                <div className="space-y-3.5" aria-hidden="true">
+                  {[0, 1, 2, 3].map((item) => (
+                    <div key={item} className="space-y-3 rounded-2xl border border-border/50 bg-card/60 p-5">
+                      <div className="flex items-center gap-2">
+                        <div className="h-5 w-20 animate-pulse rounded-full bg-muted" />
+                        <div className="h-5 w-32 animate-pulse rounded-full bg-muted" />
+                      </div>
+                      <div className="h-5 w-2/3 animate-pulse rounded-full bg-muted" />
+                      <div className="h-4 w-1/3 animate-pulse rounded-full bg-muted" />
                     </div>
                   ))}
                 </div>
               )}
-            </div>
+            </section>
 
+            {/* Apple style Pagination footer */}
             {jobs.length > 0 && (
-              <nav
-                aria-label="Job results pages"
-                className="mt-4 flex items-center justify-between gap-2"
-              >
+              <footer className="mt-6 flex items-center justify-between border-t border-border/40 pt-4">
                 <button
                   type="button"
                   disabled={page <= 1 || loading}
                   onClick={() => setPage((current) => Math.max(1, current - 1))}
-                  className="inline-flex h-10 items-center gap-2 rounded-md px-2.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+                  className="inline-flex h-9 items-center gap-2 rounded-full border border-border/70 bg-card px-4 text-xs font-medium text-foreground transition-all hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-30"
                 >
                   <ArrowLeft aria-hidden="true" className="size-3.5" />
                   Previous
                 </button>
-                <span className="text-xs tabular-nums text-muted-foreground">
+
+                <span className="text-xs font-medium tabular-nums text-muted-foreground">
                   Page {result?.page ?? page} of {totalPages}
                 </span>
+
                 <button
                   type="button"
                   disabled={page >= totalPages || loading}
-                  onClick={() =>
-                    setPage((current) => Math.min(totalPages, current + 1))
-                  }
-                  className="inline-flex h-10 items-center gap-2 rounded-md px-2.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+                  onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
+                  className="inline-flex h-9 items-center gap-2 rounded-full border border-border/70 bg-card px-4 text-xs font-medium text-foreground transition-all hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-30"
                 >
                   Next
                   <ArrowRight aria-hidden="true" className="size-3.5" />
                 </button>
-              </nav>
+              </footer>
             )}
-          </section>
-        </div>
-        <Dialog.Portal>
-          <Dialog.Backdrop className="fixed inset-0 z-40 bg-foreground/20 backdrop-blur-[2px] lg:hidden" />
-          <Dialog.Viewport className="fixed inset-0 z-50 flex items-end lg:hidden">
-            <Dialog.Popup
-              aria-label="Refine job search"
-              className="w-full max-h-[calc(100dvh-3rem)] overflow-y-auto rounded-t-2xl border border-border/80 bg-background p-3 shadow-[0_-16px_48px_color-mix(in_oklch,var(--foreground)_16%,transparent)] outline-none sm:mx-auto sm:max-w-xl sm:rounded-2xl"
-            >
-              {filterPanel(
-                <Dialog.Close
-                  type="button"
-                  className="inline-flex min-h-10 items-center gap-1 rounded-md px-2 text-xs font-semibold text-primary transition-colors hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+
+            {/* Mobile Filter Sheet Modal */}
+            <Dialog.Portal>
+              <Dialog.Backdrop className="fixed inset-0 z-40 bg-foreground/20 backdrop-blur-sm lg:hidden" />
+              <Dialog.Viewport className="fixed inset-0 z-50 flex items-end lg:hidden">
+                <Dialog.Popup
+                  aria-label="Refine job search"
+                  className="max-h-[85dvh] w-full overflow-y-auto rounded-t-3xl border border-border/80 bg-background p-6 shadow-2xl outline-none"
                 >
-                  Done
-                  <X aria-hidden="true" className="size-3.5" />
-                </Dialog.Close>,
-                <Dialog.Title className="flex items-center gap-2 text-sm font-semibold">
-                  <SlidersHorizontal aria-hidden="true" className="size-4 text-primary" />
-                  Refine search
-                </Dialog.Title>,
-              )}
-            </Dialog.Popup>
-          </Dialog.Viewport>
-        </Dialog.Portal>
-        </Dialog.Root>
-      </main>
+                  <div className="mb-6 flex items-center justify-between">
+                    <Dialog.Title className="text-sm font-semibold tracking-tight">
+                      Filter Jobs
+                    </Dialog.Title>
+                    <Dialog.Close
+                      type="button"
+                      className="inline-flex size-8 items-center justify-center rounded-full bg-secondary text-muted-foreground hover:text-foreground"
+                    >
+                      <X aria-hidden="true" className="size-4" />
+                    </Dialog.Close>
+                  </div>
+
+                  <div className="space-y-4">
+                    <FilterSelect
+                      label="Platform"
+                      value={provider}
+                      onChange={(value) => updateFilter(() => setProvider(value))}
+                      options={[
+                        { value: "", label: "All platforms" },
+                        ...providers.map((item) => ({
+                          value: item,
+                          label: providerLabels[item],
+                        })),
+                      ]}
+                    />
+                    <FilterSelect
+                      label="Employment"
+                      value={employment}
+                      onChange={(value) => updateFilter(() => setEmployment(value))}
+                      options={employmentOptions}
+                    />
+                    <FilterSelect
+                      label="Workplace"
+                      value={workplace}
+                      onChange={(value) => updateFilter(() => setWorkplace(value))}
+                      options={workplaceOptions}
+                    />
+
+                    <fieldset className="space-y-1.5">
+                      <legend className="block text-xs font-medium text-muted-foreground">
+                        Posted between
+                      </legend>
+                      <div className="grid grid-cols-2 gap-2">
+                        <input
+                          aria-label="Posted after"
+                          type="date"
+                          value={postedAfter}
+                          onChange={(event) =>
+                            updateFilter(() => setPostedAfter(event.target.value))
+                          }
+                          className="h-10 w-full rounded-xl border border-input bg-input/40 px-2 text-xs font-medium text-foreground outline-none transition focus:border-primary focus:bg-background focus:ring-2 focus:ring-primary/20"
+                        />
+                        <input
+                          aria-label="Posted before"
+                          type="date"
+                          value={postedBefore}
+                          onChange={(event) =>
+                            updateFilter(() => setPostedBefore(event.target.value))
+                          }
+                          className="h-10 w-full rounded-xl border border-input bg-input/40 px-2 text-xs font-medium text-foreground outline-none transition focus:border-primary focus:bg-background focus:ring-2 focus:ring-primary/20"
+                        />
+                      </div>
+                    </fieldset>
+
+                    <label className="flex cursor-pointer items-center gap-2.5 pt-2 text-xs text-muted-foreground hover:text-foreground">
+                      <input
+                        type="checkbox"
+                        checked={includeDescriptions}
+                        onChange={(event) =>
+                          updateFilter(() => setIncludeDescriptions(event.target.checked))
+                        }
+                        className="size-4 rounded-md accent-[#A8DADC]"
+                      />
+                      Search within description
+                    </label>
+
+                    <div className="pt-4">
+                      <Dialog.Close
+                        type="button"
+                        className="flex h-11 w-full items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground shadow-sm"
+                      >
+                        Apply Filters
+                      </Dialog.Close>
+                    </div>
+                  </div>
+                </Dialog.Popup>
+              </Dialog.Viewport>
+            </Dialog.Portal>
+          </Dialog.Root>
+        </main>
+      </div>
     </div>
   );
 }
