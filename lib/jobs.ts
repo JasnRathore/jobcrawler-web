@@ -36,5 +36,4 @@ export interface JobSearchResponse {
   page: number;
   pageSize: number;
   totalPages: number;
-  bookmarkCount: number;
 }

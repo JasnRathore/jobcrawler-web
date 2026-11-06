@@ -38,13 +38,14 @@ is missing. Never import it from a client component.
 The home page is a standalone job browser backed directly by the shared Turso
 database. It searches jobs across all supported providers and includes keyword,
 location, provider, employment, workplace, and posting-date filters; optional
-description search; saved jobs; and paging. The API routes in `app/api` query
-`indexed_jobs` and `indexed_bookmarks` directly without going through the Go
-project or changing the crawler's database schema.
+description search; saved jobs; and paging. The API route in `app/api/jobs`
+queries `indexed_jobs` directly without going through the Go project or changing
+the crawler's database schema.
 
-Saved jobs use the shared `indexed_bookmarks` table, so they are global to this
-database (there are no user accounts or per-user bookmarks yet). Protect the
-deployment appropriately if it should not be public.
+Saved jobs are stored in the browser's local storage, so they are private to the
+browser and device where they were saved. They are not synchronized across
+devices or browser profiles. Existing rows in the shared `indexed_bookmarks`
+table are not imported.
 
 ## UI
 
@@ -54,16 +55,17 @@ collapse behind a filter control on small screens, and Explore/Saved are the
 primary navigation. The warm paper-and-forest palette is shared by light and
 dark themes through the tokens in `app/globals.css`; the theme follows the
 system setting by default and the header toggle remembers an explicit choice on
-this device. Search, filtering, pagination, bookmarks, and apply links use the
-live routes described above.
+this device. Search, filtering, pagination, and apply links use the live jobs
+route; bookmark changes are stored in local storage.
 
 ## AI
 
 The frontend does not currently make model calls or include an AI execution
-workflow. Job discovery and saved roles are backed by the existing Turso
-routes; the UI does not simulate AI-generated results. GitHub Copilot can be
-used to develop the application, but adding an in-product AI feature requires
-a concrete capability and a server-side model integration.
+workflow. Job discovery is backed by the existing Turso routes, while saved
+roles are stored locally in the browser; the UI does not simulate AI-generated
+results. GitHub Copilot can be used to develop the application, but adding an
+in-product AI feature requires a concrete capability and a server-side model
+integration.
 
 ## Checks
 

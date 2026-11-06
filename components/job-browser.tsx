@@ -31,6 +31,7 @@ import {
   ComboboxList,
 } from "@/components/ui/combobox";
 import { cn } from "cn";
+import { bookmarkKey, readBookmarks, writeBookmarks } from "@/lib/bookmarks";
 import {
   providers,
   type Job,
@@ -80,10 +81,6 @@ const workplaceOptions = [
   { value: "onsite", label: "On-site" },
 ];
 
-function jobKey(job: Job): string {
-  return `${job.provider}:${job.company_slug}:${job.job_id}`;
-}
-
 function formatDate(value: string): string {
   if (!value) return "";
   const date = new Date(
@@ -116,14 +113,16 @@ export function JobBrowser() {
   const [page, setPage] = useState(1);
   const [refreshKey, setRefreshKey] = useState(0);
   const [result, setResult] = useState<JobSearchResponse | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [apiLoading, setApiLoading] = useState(true);
   const [error, setError] = useState("");
+  const [bookmarkError, setBookmarkError] = useState("");
+  const [bookmarks, setBookmarks] = useState<Job[]>([]);
+  const [bookmarksReady, setBookmarksReady] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [busyJobs, setBusyJobs] = useState<Set<string>>(() => new Set());
 
   const queryString = useMemo(() => {
     const params = new URLSearchParams({
-      saved: String(mode === "saved"),
       page: String(page),
       details: String(includeDescriptions),
     });
@@ -136,7 +135,6 @@ export function JobBrowser() {
     if (postedBefore) params.set("posted_before", postedBefore);
     return params.toString();
   }, [
-    mode,
     page,
     query,
     location,
@@ -149,9 +147,83 @@ export function JobBrowser() {
   ]);
 
   useEffect(() => {
+    const loadBookmarks = () => {
+      try {
+        setBookmarks(readBookmarks());
+        setBookmarkError("");
+      } catch (storageError) {
+        setBookmarkError(
+          storageError instanceof Error
+            ? storageError.message
+            : "Saved roles could not be loaded from this browser.",
+        );
+      } finally {
+        setBookmarksReady(true);
+      }
+    };
+
+    loadBookmarks();
+    window.addEventListener("storage", loadBookmarks);
+    return () => window.removeEventListener("storage", loadBookmarks);
+  }, []);
+
+  const bookmarkKeys = useMemo(
+    () => new Set(bookmarks.map(bookmarkKey)),
+    [bookmarks],
+  );
+
+  const filteredBookmarks = useMemo(() => {
+    if (mode !== "saved") return [];
+
+    const params = new URLSearchParams(queryString);
+    const search = (params.get("q") ?? "").toLocaleLowerCase();
+    const locationFilter = (params.get("location") ?? "").toLocaleLowerCase();
+    const providerFilter = params.get("provider") ?? "";
+    const employmentFilter = (params.get("employment") ?? "").toLocaleLowerCase();
+    const workplaceFilter = (params.get("workplace") ?? "").toLocaleLowerCase();
+    const postedAfterFilter = params.get("posted_after") ?? "";
+    const postedBeforeFilter = params.get("posted_before") ?? "";
+    const includeDescription = params.get("details") === "true";
+
+    return bookmarks
+      .filter((job) => {
+        const searchMatches =
+          !search ||
+          [job.title, job.company_name, job.location_name].some((value) =>
+            value.toLocaleLowerCase().includes(search),
+          ) ||
+          (includeDescription &&
+            job.description.toLocaleLowerCase().includes(search));
+        const published = job.first_published.slice(0, 10);
+
+        return (
+          searchMatches &&
+          (!locationFilter ||
+            job.location_name.toLocaleLowerCase().includes(locationFilter)) &&
+          (!providerFilter || job.provider === providerFilter) &&
+          (!employmentFilter ||
+            job.employment_type.toLocaleLowerCase().includes(employmentFilter)) &&
+          (!workplaceFilter ||
+            job.workplace_type.toLocaleLowerCase().includes(workplaceFilter)) &&
+          (!postedAfterFilter || published >= postedAfterFilter) &&
+          (!postedBeforeFilter || published <= postedBeforeFilter)
+        );
+      })
+      .sort(
+        (a, b) =>
+          b.first_published.localeCompare(a.first_published) ||
+          a.title.localeCompare(b.title, undefined, { sensitivity: "base" }),
+      );
+  }, [bookmarks, mode, queryString]);
+
+  useEffect(() => {
+    if (mode === "saved") {
+      return;
+    }
+
     const controller = new AbortController();
     const timeout = window.setTimeout(async () => {
-      setLoading(true);
+      setApiLoading(true);
       setError("");
       try {
         const response = await fetch(`/api/jobs?${queryString}`, {
@@ -178,7 +250,7 @@ export function JobBrowser() {
             : "Jobs could not be loaded.",
         );
       } finally {
-        if (!controller.signal.aborted) setLoading(false);
+        if (!controller.signal.aborted) setApiLoading(false);
       }
     }, 150);
 
@@ -186,7 +258,7 @@ export function JobBrowser() {
       window.clearTimeout(timeout);
       controller.abort();
     };
-  }, [queryString, refreshKey]);
+  }, [mode, queryString, refreshKey]);
 
   const updateFilter = useCallback((update: () => void) => {
     update();
@@ -245,26 +317,16 @@ export function JobBrowser() {
   };
 
   async function toggleBookmark(job: Job) {
-    const key = jobKey(job);
+    const key = bookmarkKey(job);
     setBusyJobs((current) => new Set(current).add(key));
     try {
-      const response = await fetch("/api/bookmarks", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          provider: job.provider,
-          companySlug: job.company_slug,
-          jobId: job.job_id,
-        }),
-      });
-      const payload = (await response.json()) as {
-        error?: string;
-        saved?: boolean;
-      };
-      if (!response.ok) {
-        throw new Error(payload.error ?? "Bookmark could not be updated.");
-      }
-      const saved = payload.saved ?? Number(job.is_bookmarked) !== 1;
+      if (bookmarkError) throw new Error(bookmarkError);
+      const saved = !bookmarkKeys.has(key);
+      const nextBookmarks = saved
+        ? [{ ...job, is_bookmarked: 1 }, ...bookmarks]
+        : bookmarks.filter((bookmark) => bookmarkKey(bookmark) !== key);
+      writeBookmarks(nextBookmarks);
+      setBookmarks(nextBookmarks);
       toast.add({
         title: saved ? "Role saved" : "Role removed",
         description: saved
@@ -272,7 +334,6 @@ export function JobBrowser() {
           : `${job.title || "This role"} was removed from your saved roles.`,
         type: "success",
       });
-      setRefreshKey((current) => current + 1);
     } catch (requestError) {
       toast.add({
         title: "Couldn't update saved roles",
@@ -292,12 +353,28 @@ export function JobBrowser() {
     }
   }
 
-  const jobs = result?.jobs ?? [];
-  const total = result?.total ?? 0;
+  const total =
+    mode === "saved" ? filteredBookmarks.length : result?.total ?? 0;
   const pageSize = result?.pageSize ?? 20;
-  const totalPages = result?.totalPages ?? 1;
-  const firstResult = total === 0 ? 0 : (page - 1) * pageSize + 1;
-  const lastResult = Math.min((page - 1) * pageSize + jobs.length, total);
+  const totalPages =
+    mode === "saved"
+      ? Math.max(1, Math.ceil(total / pageSize))
+      : result?.totalPages ?? 1;
+  const currentPage =
+    mode === "saved" ? Math.min(page, totalPages) : result?.page ?? page;
+  const jobs =
+    mode === "saved"
+      ? filteredBookmarks
+          .slice((currentPage - 1) * pageSize, currentPage * pageSize)
+          .map((job) => ({ ...job, is_bookmarked: 1 }))
+      : (result?.jobs ?? []).map((job) => ({
+          ...job,
+          is_bookmarked: bookmarkKeys.has(bookmarkKey(job)) ? 1 : 0,
+        }));
+  const loading = mode === "saved" ? !bookmarksReady : apiLoading;
+  const visibleError = bookmarkError || (mode === "all" ? error : "");
+  const firstResult = total === 0 ? 0 : (currentPage - 1) * pageSize + 1;
+  const lastResult = Math.min((currentPage - 1) * pageSize + jobs.length, total);
 
 
 
@@ -577,15 +654,27 @@ export function JobBrowser() {
               aria-busy={loading}
               className="flex-1 space-y-3"
             >
-              {error && (
+              {visibleError && (
                 <div
                   role="alert"
                   className="flex items-center justify-between rounded-xl border border-destructive/25 bg-destructive/10 px-4 py-3 text-xs text-destructive"
                 >
-                  <span>{error}</span>
+                  <span>{visibleError}</span>
                   <button
                     type="button"
-                    onClick={() => setRefreshKey((current) => current + 1)}
+                    onClick={() => {
+                      setRefreshKey((current) => current + 1);
+                      try {
+                        setBookmarks(readBookmarks());
+                        setBookmarkError("");
+                      } catch (storageError) {
+                        setBookmarkError(
+                          storageError instanceof Error
+                            ? storageError.message
+                            : "Saved roles could not be loaded from this browser.",
+                        );
+                      }
+                    }}
                     className="font-semibold underline underline-offset-4"
                   >
                     Retry
@@ -594,7 +683,7 @@ export function JobBrowser() {
               )}
 
               {jobs.map((job) => {
-                const key = jobKey(job);
+                const key = bookmarkKey(job);
                 const isSaved = Number(job.is_bookmarked) === 1;
                 const primaryUrl = job.apply_url || job.details_url;
                 return (
@@ -688,7 +777,11 @@ export function JobBrowser() {
                         size="icon"
                         aria-label={`${isSaved ? "Remove saved role" : "Save role"}: ${job.title || "Untitled role"}`}
                         aria-pressed={isSaved}
-                        disabled={busyJobs.has(key)}
+                        disabled={
+                          !bookmarksReady ||
+                          Boolean(bookmarkError) ||
+                          busyJobs.has(key)
+                        }
                         onClick={() => void toggleBookmark(job)}
                         className={`size-9 rounded-lg transition-all ${
                           isSaved
@@ -719,7 +812,7 @@ export function JobBrowser() {
               })}
 
               {/* Empty state */}
-              {!loading && !error && jobs.length === 0 && (
+              {!loading && !visibleError && jobs.length === 0 && (
                 <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border/80 p-12 text-center">
                   <div className="flex size-11 items-center justify-center rounded-lg bg-secondary text-muted-foreground">
                     {mode === "saved" ? (
@@ -773,7 +866,7 @@ export function JobBrowser() {
                 <Button
                   variant="secondary"
                   size="sm"
-                  disabled={page <= 1 || loading}
+                  disabled={currentPage <= 1 || loading}
                   onClick={() => setPage((current) => Math.max(1, current - 1))}
                   className="h-8.5 gap-2 rounded-lg border border-border/70 bg-secondary px-3 text-xs font-medium text-secondary-foreground hover:bg-secondary/80 disabled:cursor-not-allowed disabled:opacity-30"
                 >
@@ -782,13 +875,13 @@ export function JobBrowser() {
                 </Button>
 
                 <span className="text-xs font-medium tabular-nums text-muted-foreground">
-                  Page {result?.page ?? page} of {totalPages}
+                  Page {currentPage} of {totalPages}
                 </span>
 
                 <Button
                   variant="secondary"
                   size="sm"
-                  disabled={page >= totalPages || loading}
+                  disabled={currentPage >= totalPages || loading}
                   onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
                   className="h-8.5 gap-2 rounded-lg border border-border/70 bg-secondary px-3 text-xs font-medium text-secondary-foreground hover:bg-secondary/80 disabled:cursor-not-allowed disabled:opacity-30"
                 >
@@ -967,6 +1060,7 @@ function FilterCombobox({
           <ComboboxList>
             {(opt) => (
               <ComboboxItem
+                key={opt.value}
                 value={opt}
                 className="flex cursor-pointer items-center justify-between rounded-md px-2.5 py-1.5 text-xs text-secondary-foreground transition-colors hover:bg-background/40 data-highlighted:bg-background/50"
               >

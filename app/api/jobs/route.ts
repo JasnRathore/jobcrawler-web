@@ -25,7 +25,6 @@ export async function GET(request: NextRequest) {
   const employment = (params.get("employment") ?? "").trim().slice(0, 80);
   const workplace = (params.get("workplace") ?? "").trim().slice(0, 80);
   const provider = params.get("provider") ?? "";
-  const savedOnly = params.get("saved") === "true";
   const includeDescriptions = params.get("details") === "true";
   const pageInput = Number.parseInt(params.get("page") ?? "1", 10);
   const requestedPage = Number.isFinite(pageInput)
@@ -104,21 +103,12 @@ export async function GET(request: NextRequest) {
     args.push(`%${workplace.toLowerCase().replace(/[\\%_]/g, "\\$&")}%`);
   }
 
-  const table = savedOnly ? "indexed_bookmarks" : "indexed_jobs";
-  const bookmarked = savedOnly
-    ? "1 AS is_bookmarked, j.is_available"
-    : `EXISTS (
-        SELECT 1 FROM indexed_bookmarks b
-        WHERE b.provider = j.provider
-          AND b.company_slug = j.company_slug
-          AND b.job_id = j.job_id
-      ) AS is_bookmarked, 1 AS is_available`;
   const where = conditions.join(" AND ");
 
   try {
     const database = getTursoConnection();
     const countRow = await database.get(
-      `SELECT COUNT(*) AS total FROM ${table} j WHERE ${where}`,
+      `SELECT COUNT(*) AS total FROM indexed_jobs j WHERE ${where}`,
       ...args,
     );
     const total = Number(countRow?.total ?? 0);
@@ -131,8 +121,8 @@ export async function GET(request: NextRequest) {
         j.location_name, j.details_url, j.apply_url, j.updated_at,
         j.first_published, j.employment_type, j.workplace_type, j.department,
         j.education, j.experience, j.description, j.attributes_json,
-        ${bookmarked}
-      FROM ${table} j
+        0 AS is_bookmarked, 1 AS is_available
+      FROM indexed_jobs j
       WHERE ${where}
       ORDER BY j.first_published DESC, j.title COLLATE NOCASE
       LIMIT ? OFFSET ?`,
@@ -140,9 +130,6 @@ export async function GET(request: NextRequest) {
       pageSize,
       offset,
     )) as Job[];
-    const bookmarksRow = await database.get(
-      "SELECT COUNT(*) AS total FROM indexed_bookmarks",
-    );
 
     return NextResponse.json(
       {
@@ -151,7 +138,6 @@ export async function GET(request: NextRequest) {
         page,
         pageSize,
         totalPages,
-        bookmarkCount: Number(bookmarksRow?.total ?? 0),
       },
       { headers: { "Cache-Control": "no-store" } },
     );
