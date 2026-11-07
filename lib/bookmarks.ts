@@ -18,15 +18,10 @@ function isBookmark(value: unknown): value is Job {
     "location_name",
     "details_url",
     "apply_url",
-    "updated_at",
     "first_published",
     "employment_type",
     "workplace_type",
-    "department",
-    "education",
-    "experience",
     "description",
-    "attributes_json",
   ];
 
   return (

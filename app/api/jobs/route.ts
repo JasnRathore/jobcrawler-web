@@ -121,9 +121,8 @@ export async function GET(request: NextRequest) {
       {
         sql: `SELECT
           j.provider, j.company_slug, j.job_id, j.title, j.company_name,
-          j.location_name, j.details_url, j.apply_url, j.updated_at,
-          j.first_published, j.employment_type, j.workplace_type, j.department,
-          j.education, j.experience, j.description, j.attributes_json,
+          j.location_name, j.details_url, j.apply_url,
+          j.first_published, j.employment_type, j.workplace_type, j.description,
           0 AS is_bookmarked, 1 AS is_available
         FROM indexed_jobs j
         WHERE ${where}
@@ -143,9 +142,8 @@ export async function GET(request: NextRequest) {
       const pagedResult = await database.all(
         `SELECT
           j.provider, j.company_slug, j.job_id, j.title, j.company_name,
-          j.location_name, j.details_url, j.apply_url, j.updated_at,
-          j.first_published, j.employment_type, j.workplace_type, j.department,
-          j.education, j.experience, j.description, j.attributes_json,
+          j.location_name, j.details_url, j.apply_url,
+          j.first_published, j.employment_type, j.workplace_type, j.description,
           0 AS is_bookmarked, 1 AS is_available
         FROM indexed_jobs j
         WHERE ${where}
