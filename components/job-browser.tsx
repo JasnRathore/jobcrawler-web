@@ -7,7 +7,7 @@ import {
   BriefcaseBusiness,
   Building2,
   CalendarDays,
-  ChevronDown,
+  CircleDollarSign,
   ExternalLink,
   LoaderCircle,
   MapPin,
@@ -73,13 +73,13 @@ const providerLabels: Record<Provider, string> = {
   workable: "Workable",
 };
 
-const providerBadgeStyles: Record<Provider, string> = {
-  ashbyhq: "border-purple-500/20 bg-purple-500/10 text-purple-700 dark:text-purple-300",
-  greenhouse: "border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
-  lever: "border-blue-500/20 bg-blue-500/10 text-blue-700 dark:text-blue-300",
-  levereu: "border-sky-500/20 bg-sky-500/10 text-sky-700 dark:text-sky-300",
-  workable: "border-amber-500/20 bg-amber-500/10 text-amber-800 dark:text-amber-300",
-};
+const diceBearStyles = [
+  "glass",
+  "blobs",
+  "squircles",
+  "waves",
+  "landscape",
+] as const;
 
 const employmentOptions = [
   { value: "", label: "Any type" },
@@ -113,6 +113,52 @@ function formatLabel(value: string): string {
   return value
     .replace(/[_-]+/g, " ")
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function getAvatarStyle(seed: string): (typeof diceBearStyles)[number] {
+  let hash = 0;
+  for (const character of seed) {
+    hash = (hash * 31 + character.charCodeAt(0)) >>> 0;
+  }
+  return diceBearStyles[hash % diceBearStyles.length];
+}
+
+function CompanyAvatar({
+  companyName,
+  companySlug,
+}: {
+  companyName: string;
+  companySlug: string;
+}) {
+  const [failed, setFailed] = useState(false);
+  const seed = companyName || companySlug || "company";
+  const style = getAvatarStyle(seed);
+  const avatarUrl = `https://api.dicebear.com/10.x/${style}/svg?seed=${encodeURIComponent(seed)}`;
+
+  if (failed) {
+    return (
+      <span
+        aria-hidden="true"
+        className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-background/50 text-secondary-foreground ring-1 ring-border/60"
+      >
+        <Building2 className="size-4" />
+      </span>
+    );
+  }
+
+  return (
+    <img
+      src={avatarUrl}
+      alt=""
+      aria-hidden="true"
+      className="size-10 shrink-0 rounded-lg bg-background/50 object-cover ring-1 ring-border/60"
+      onError={() => setFailed(true)}
+    />
+  );
+}
+
+function normalizeJobUrl(value: string): string {
+  return value.trim().replace(/\/(?:apply|application)\/?(?=([?#]|$))/i, "");
 }
 
 function countFilters(filters: FilterDraft): number {
@@ -489,8 +535,7 @@ export function JobBrowser() {
       setShowClearSavedDialog(false);
       toast.add({
         title: "Saved roles cleared",
-        description: "Saved roles were removed from this browser profile.",
-        type: "success",
+        type: "info",
       });
     } catch (storageError) {
       const message = getBookmarkErrorMessage(storageError);
@@ -576,13 +621,44 @@ export function JobBrowser() {
         focusResultsAfterChange.current = true;
       }
       setBookmarks(nextBookmarks);
-      toast.add({
-        title: saved ? "Role saved" : "Role removed",
-        description: saved
-          ? `${job.title || "This role"} is in Saved on this device.`
-          : `${job.title || "This role"} was removed from Saved on this device.`,
-        type: "success",
-      });
+      if (saved) {
+        toast.add({
+          title: "Role saved",
+          description: "Available in Saved on this device.",
+          type: "success",
+        });
+      } else {
+        let removalToastId = "";
+        removalToastId = toast.add({
+          title: "Role removed",
+          description: "Removed from Saved.",
+          type: "info",
+          actionProps: {
+            children: "Undo",
+            onClick: () => {
+              try {
+                const restoredBookmarks = [job, ...nextBookmarks];
+                writeBookmarks(restoredBookmarks);
+                setBookmarks(restoredBookmarks);
+                toast.close(removalToastId);
+                toast.add({
+                  title: "Role restored",
+                  type: "success",
+                });
+              } catch (restoreError) {
+                const message = getBookmarkErrorMessage(restoreError);
+                setBookmarkError(message);
+                toast.add({
+                  title: "Couldn't restore role",
+                  description: message,
+                  type: "error",
+                  priority: "high",
+                });
+              }
+            },
+          },
+        });
+      }
     } catch (requestError) {
       const message = getBookmarkErrorMessage(requestError);
       setBookmarkError(message);
@@ -650,7 +726,7 @@ export function JobBrowser() {
       {/* Full-bleed workspace — sidebar + content separated by a structural border */}
       <div className="flex min-h-screen w-full flex-col lg:flex-row">
         {/* Left Sidebar */}
-        <aside className="hidden w-full shrink-0 flex-col justify-between border-b border-border/60 bg-card/25 p-4 lg:sticky lg:top-0 lg:flex lg:h-screen lg:w-60 lg:overflow-y-auto lg:border-b-0 lg:border-r">
+        <aside className="hidden w-full shrink-0 flex-col justify-between bg-card/25 p-4 lg:sticky lg:top-0 lg:flex lg:h-screen lg:w-60 lg:overflow-y-auto">
           <div className="space-y-4">
             {/* View switcher */}
             <nav aria-label="Job views" className="flex flex-col gap-2.5">
@@ -1048,92 +1124,89 @@ export function JobBrowser() {
               {jobs.map((job) => {
                 const key = bookmarkKey(job);
                 const isSaved = Number(job.is_bookmarked) === 1;
-                const primaryUrl = job.apply_url || job.details_url;
+                const primaryUrl = normalizeJobUrl(job.apply_url || job.details_url);
                 return (
                   <article
                     key={key}
-                    className="relative flex min-w-0 flex-col justify-between [overflow-wrap:anywhere] rounded-xl border border-border/80 bg-secondary p-4 shadow-xs sm:flex-row sm:items-start sm:gap-6"
+                    className="relative min-w-0 [overflow-wrap:anywhere] rounded-xl border border-border/80 bg-secondary p-4 shadow-xs sm:p-5 md:flex md:items-stretch md:gap-8"
                   >
-                    <div className="min-w-0 flex-1 space-y-2">
-                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] leading-5">
-                        <span className="inline-flex min-w-0 items-center gap-1.5 text-sm font-semibold text-secondary-foreground">
-                          <Building2 aria-hidden="true" className="size-3.5 shrink-0 text-muted-foreground" />
-                          <span className="break-words">{job.company_name || job.company_slug}</span>
-                        </span>
-                        <span aria-hidden="true" className="text-muted-foreground/60">·</span>
-                        <span className={`inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-semibold tracking-wide uppercase ${providerBadgeStyles[job.provider] || "border-border bg-muted text-muted-foreground"}`}>
-                          {providerLabels[job.provider]}
-                        </span>
+                    <div className="flex min-w-0 items-center gap-3 md:w-[380px] md:shrink-0 md:justify-center md:gap-4">
+                      <CompanyAvatar
+                        companyName={job.company_name}
+                        companySlug={job.company_slug}
+                      />
+                      <div className="min-w-0 flex-1 md:flex md:flex-col md:justify-center">
+                        <h2 className="break-words text-base font-semibold leading-snug tracking-[-0.015em] text-foreground sm:text-lg">
+                          {job.title || "Untitled position"}
+                        </h2>
 
-                        {Number(job.is_available) !== 1 && (
-                          <span className="rounded-md bg-destructive/15 px-2 py-0.5 text-[10px] font-medium text-destructive">
-                            Expired
+                        <div className="mt-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-[12px] leading-5">
+                          <span className="whitespace-nowrap text-sm font-light tracking-wide uppercase text-secondary-foreground">
+                            <span className="font-semibold text-primary">@</span>{" "}
+                            {job.company_name || job.company_slug}
                           </span>
-                        )}
+
+                          {Number(job.is_available) !== 1 && (
+                            <span className="rounded-md bg-destructive/15 px-2 py-0.5 text-[10px] font-medium text-destructive">
+                              Expired
+                            </span>
+                          )}
+                        </div>
                       </div>
+                    </div>
 
-                      <h2 className="break-words text-lg font-semibold leading-snug tracking-[-0.015em] text-foreground">
-                        {job.title || "Untitled position"}
-                      </h2>
-
-                      <div className="flex flex-wrap items-center gap-x-3.5 gap-y-1.5 text-xs text-muted-foreground">
+                    <div className="md:hidden">
+                      <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 text-[11px] leading-4 text-muted-foreground">
                         {job.location_name && (
-                          <span className="inline-flex items-center gap-1">
+                          <span className="inline-flex min-w-0 items-center gap-1.5">
                             <MapPin aria-hidden="true" className="size-3 shrink-0" />
-                            <span className="break-words">{job.location_name}</span>
+                            <span className="truncate">{job.location_name}</span>
                           </span>
                         )}
-                        {job.employment_type && (
-                          <span className="inline-flex items-center gap-1">
+                        <span className="inline-flex min-w-0 items-center gap-1.5">
+                          <CircleDollarSign aria-hidden="true" className="size-3 shrink-0" />
+                          <span className="truncate">Not listed</span>
+                        </span>
+                        {(job.workplace_type || job.employment_type) && (
+                          <span className="inline-flex min-w-0 items-center gap-1.5">
                             <BriefcaseBusiness aria-hidden="true" className="size-3 shrink-0" />
-                            {job.employment_type}
-                          </span>
-                        )}
-                        {job.workplace_type && (
-                          <span className="font-medium text-secondary-foreground">
-                            {formatLabel(job.workplace_type)}
+                            <span className="truncate text-secondary-foreground">
+                              {[job.workplace_type, job.employment_type]
+                                .filter(Boolean)
+                                .map(formatLabel)
+                                .join(" · ")}
+                            </span>
                           </span>
                         )}
                         {job.first_published && (
-                          <span className="inline-flex items-center gap-1 tabular-nums">
+                          <span className="inline-flex items-center gap-1.5 tabular-nums">
                             <CalendarDays aria-hidden="true" className="size-3 shrink-0" />
                             {formatDate(job.first_published)}
                           </span>
                         )}
                       </div>
 
-                      {/* Tags */}
-                      {(job.department || job.experience || job.education) && (
-                        <div className="flex flex-wrap gap-1.5 pt-1">
-                          {[job.department, job.experience, job.education]
-                            .filter(Boolean)
-                            .map((item) => (
-                              <span
-                                key={item}
-                                className="rounded-md border border-border/70 px-2 py-1 text-[11px] font-medium text-secondary-foreground"
-                              >
-                                {item}
-                              </span>
-                            ))}
-                        </div>
-                      )}
-
-                      {/* Expandable description */}
-                      {job.description && (
-                        <details className="group/desc mt-3 border-t border-border/60 pt-2">
-                          <summary className="flex min-h-11 cursor-pointer items-center gap-1.5 text-xs font-medium text-secondary-foreground hover:text-foreground select-none lg:min-h-9">
-                            <ChevronDown className="size-3 transition-transform group-open/desc:rotate-180" />
-                            <span>Job brief</span>
-                          </summary>
-                          <p className="mt-2 whitespace-pre-wrap text-[13px] leading-relaxed text-secondary-foreground">
-                            {job.description}
-                          </p>
-                        </details>
-                      )}
                     </div>
 
-                    {/* Right action controls */}
-                    <div className="mt-3 flex items-center gap-2 sm:mt-1 sm:shrink-0">
+                    <div className="hidden min-w-0 flex-1 self-stretch grid-cols-3 items-center gap-3 rounded-lg bg-background p-3 md:grid md:max-w-[640px]">
+                      {[
+                        [job.location_name || "Not specified", MapPin],
+                        ["Not listed", CircleDollarSign],
+                        [[job.workplace_type, job.employment_type].filter(Boolean).map(formatLabel).join(" · ") || "Not specified", BriefcaseBusiness],
+                      ].map(([value, Icon], index) => (
+                        <div key={index} className="min-w-0">
+                          <p className="flex min-w-0 items-center gap-1.5 text-xs font-semibold text-secondary-foreground">
+                            <Icon aria-hidden="true" className="size-3.5 shrink-0 text-muted-foreground" />
+                            <span className="truncate">{value as string}</span>
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="mt-4 flex items-center gap-2 pt-1 md:ml-auto md:mt-0 md:shrink-0 md:self-center md:pt-0">
+                      <span className="hidden text-xs text-muted-foreground md:inline">
+                        Posted {job.first_published ? formatDate(job.first_published).toLowerCase() : "recently"}
+                      </span>
                       <Button
                         type="button"
                         variant={isSaved ? "default" : "secondary"}
@@ -1146,10 +1219,10 @@ export function JobBrowser() {
                           busyJobs.has(key)
                         }
                         onClick={() => void toggleBookmark(job)}
-                        className={`size-11 rounded-lg transition-all lg:size-9 ${
+                        className={`size-11 shrink-0 rounded-full transition-all ${
                           isSaved
                             ? "border border-primary/40 bg-primary/20 text-primary hover:bg-primary/30"
-                            : "border border-border/70 bg-secondary text-secondary-foreground hover:bg-secondary/80"
+                              : "border border-border bg-background text-foreground hover:bg-muted"
                         }`}
                       >
                         <Bookmark
@@ -1163,9 +1236,9 @@ export function JobBrowser() {
                           nativeButton={false}
                           render={<a href={primaryUrl} target="_blank" rel="noopener noreferrer" />}
                           variant="default"
-                          className="h-11 flex-1 gap-2 rounded-lg px-4 text-xs font-semibold shadow-xs hover:opacity-90 lg:h-9 lg:flex-none"
+                          className="order-first h-11 flex-1 gap-2 rounded-full px-4 text-xs font-semibold shadow-xs hover:opacity-90 md:order-last md:flex-none"
                         >
-                          <span>{job.apply_url ? "Apply" : "View"}</span>
+                          <span>Apply</span>
                           <ExternalLink aria-hidden="true" className="size-3.5" />
                         </Button>
                       )}
@@ -1285,26 +1358,38 @@ export function JobBrowser() {
 
             <nav
               aria-label="Job views"
-              className="fixed inset-x-0 bottom-0 z-30 border-t border-border/70 bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md md:hidden"
+              className="fixed inset-x-0 bottom-0 z-30 bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md md:hidden"
             >
               <div className="mx-auto flex max-w-lg items-center justify-around gap-3 px-4 py-2">
                 <Button
                   type="button"
-                  variant={mode === "all" ? "secondary" : "ghost"}
+                  variant={mode === "all" ? "default" : "secondary"}
                   onClick={() => changeMode("all")}
                   aria-current={mode === "all" ? "page" : undefined}
-                  className="h-11 min-w-28 flex-1 flex-col gap-0.5 rounded-lg text-[11px]"
+                  className={cn(
+                    "h-11 min-w-28 flex-1 flex-col gap-0.5 rounded-lg text-[11px] transition-all",
+                    mode === "all"
+                      ? "bg-primary text-primary-foreground shadow-xs font-semibold"
+                      : "bg-secondary text-secondary-foreground hover:bg-secondary/80 hover:text-foreground",
+                  )}
                 >
-                  <BriefcaseBusiness aria-hidden="true" className="size-4" />
-                  Explore
+                  <span className="flex items-center gap-1.5">
+                    <BriefcaseBusiness aria-hidden="true" className="size-4" />
+                    Explore
+                  </span>
                 </Button>
                 <Button
                   type="button"
-                  variant={mode === "saved" ? "secondary" : "ghost"}
+                  variant={mode === "saved" ? "default" : "secondary"}
                   onClick={() => changeMode("saved")}
                   aria-current={mode === "saved" ? "page" : undefined}
                   aria-label={savedNavigationLabel}
-                  className="h-11 min-w-28 flex-1 flex-col gap-0.5 rounded-lg text-[11px]"
+                  className={cn(
+                    "h-11 min-w-28 flex-1 flex-col gap-0.5 rounded-lg text-[11px] transition-all",
+                    mode === "saved"
+                      ? "bg-primary text-primary-foreground shadow-xs font-semibold"
+                      : "bg-secondary text-secondary-foreground hover:bg-secondary/80 hover:text-foreground",
+                  )}
                 >
                   <span className="flex items-center gap-1.5">
                     <Bookmark aria-hidden="true" className="size-4" />
@@ -1330,7 +1415,7 @@ export function JobBrowser() {
                   aria-labelledby="filter-title"
                   className="flex max-h-[85dvh] w-full flex-col overflow-hidden rounded-t-2xl border border-border/80 bg-background shadow-2xl outline-none md:h-full md:max-h-none md:w-[26rem] md:rounded-xl"
                 >
-                  <div className="flex items-center justify-between border-b border-border/60 px-5 pb-4 pt-[calc(1rem+env(safe-area-inset-top))]">
+                  <div className="flex items-center justify-between px-5 pb-4 pt-[calc(1rem+env(safe-area-inset-top))]">
                     <div>
                       <Dialog.Title
                         id="filter-title"
@@ -1487,7 +1572,7 @@ export function JobBrowser() {
                     </label>
                   </div>
 
-                  <div className="flex items-center justify-between gap-3 border-t border-border/60 px-5 py-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+                  <div className="flex items-center justify-between gap-3 px-5 py-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
                     <Button
                       type="button"
                       variant="ghost"

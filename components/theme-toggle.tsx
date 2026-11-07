@@ -1,9 +1,9 @@
 "use client";
 
-import { Moon, Sun, SunMoon } from "lucide-react";
+import { Moon, Sun } from "lucide-react";
 import { useSyncExternalStore } from "react";
 
-import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 
 const themeStorageKey = "job-search-theme";
 const themeChangeEvent = "job-search-theme-change";
@@ -86,22 +86,20 @@ export function ThemeToggle() {
         : "Switch to dark mode";
 
   return (
-    <Button
-      type="button"
-      variant="ghost"
-      size="icon"
-      className="size-11"
+    <Switch
+      size="theme"
+      checked={isDark === true}
+      disabled={isDark === null}
       aria-label={label}
       title={label}
-      onClick={toggleTheme}
+      onCheckedChange={toggleTheme}
     >
-      {isDark === null ? (
-        <SunMoon aria-hidden="true" />
-      ) : isDark ? (
-        <Sun aria-hidden="true" />
-      ) : (
-        <Moon aria-hidden="true" />
-      )}
-    </Button>
+      <span className="absolute left-1 top-1 z-10 flex size-8 items-center justify-center rounded-full text-muted-foreground group-data-[unchecked]/switch:text-foreground dark:group-data-[unchecked]/switch:text-background">
+        <Sun aria-hidden="true" className="size-4" />
+      </span>
+      <span className="absolute right-1 top-1 z-10 flex size-8 items-center justify-center rounded-full text-muted-foreground group-data-[checked]/switch:text-foreground">
+        <Moon aria-hidden="true" className="translate-x-px size-4" />
+      </span>
+    </Switch>
   );
 }
