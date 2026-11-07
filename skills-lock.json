@@ -42,6 +42,12 @@
       "sourceType": "github",
       "skillPath": "skills/spec-driven-development/SKILL.md",
       "computedHash": "6ecb6a4920d1ae2ce03b81d69a06e3855008c669082afd830bf2c49a5b44abf6"
+    },
+    "write-tech-spec": {
+      "source": "warpdotdev/common-skills",
+      "sourceType": "github",
+      "skillPath": ".agents/skills/write-tech-spec/SKILL.md",
+      "computedHash": "99c7196b75020ed98038fe8c63446172b79ff1c1ac57f32c485496d104021d52"
     }
   }
 }
