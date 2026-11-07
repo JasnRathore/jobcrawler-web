@@ -112,29 +112,51 @@ export async function GET(request: NextRequest) {
 
   try {
     const database = getTursoConnection();
-    const countRow = await database.get(
-      `SELECT COUNT(*) AS total FROM indexed_jobs j WHERE ${where}`,
-      ...args,
-    );
-    const total = Number(countRow?.total ?? 0);
+    const requestedOffset = (requestedPage - 1) * pageSize;
+    const [countResult, jobsResult] = await database.batch([
+      {
+        sql: `SELECT COUNT(*) AS total FROM indexed_jobs j WHERE ${where}`,
+        args,
+      },
+      {
+        sql: `SELECT
+          j.provider, j.company_slug, j.job_id, j.title, j.company_name,
+          j.location_name, j.details_url, j.apply_url, j.updated_at,
+          j.first_published, j.employment_type, j.workplace_type, j.department,
+          j.education, j.experience, j.description, j.attributes_json,
+          0 AS is_bookmarked, 1 AS is_available
+        FROM indexed_jobs j
+        WHERE ${where}
+        ORDER BY j.first_published DESC, j.title COLLATE NOCASE
+        LIMIT ? OFFSET ?`,
+        args: [...args, pageSize, requestedOffset],
+      },
+    ]);
+
+    const total = Number(countResult.rows?.[0]?.total ?? 0);
     const totalPages = Math.max(1, Math.ceil(total / pageSize));
     const page = Math.min(requestedPage, totalPages);
     const offset = (page - 1) * pageSize;
-    const jobs = (await database.all(
-      `SELECT
-        j.provider, j.company_slug, j.job_id, j.title, j.company_name,
-        j.location_name, j.details_url, j.apply_url, j.updated_at,
-        j.first_published, j.employment_type, j.workplace_type, j.department,
-        j.education, j.experience, j.description, j.attributes_json,
-        0 AS is_bookmarked, 1 AS is_available
-      FROM indexed_jobs j
-      WHERE ${where}
-      ORDER BY j.first_published DESC, j.title COLLATE NOCASE
-      LIMIT ? OFFSET ?`,
-      ...args,
-      pageSize,
-      offset,
-    )) as Job[];
+
+    let jobs = jobsResult.rows as Job[];
+    if (offset !== requestedOffset) {
+      const pagedResult = await database.all(
+        `SELECT
+          j.provider, j.company_slug, j.job_id, j.title, j.company_name,
+          j.location_name, j.details_url, j.apply_url, j.updated_at,
+          j.first_published, j.employment_type, j.workplace_type, j.department,
+          j.education, j.experience, j.description, j.attributes_json,
+          0 AS is_bookmarked, 1 AS is_available
+        FROM indexed_jobs j
+        WHERE ${where}
+        ORDER BY j.first_published DESC, j.title COLLATE NOCASE
+        LIMIT ? OFFSET ?`,
+        ...args,
+        pageSize,
+        offset,
+      );
+      jobs = pagedResult as Job[];
+    }
 
     return NextResponse.json(
       {
