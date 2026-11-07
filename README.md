@@ -40,7 +40,10 @@ database. It searches jobs across all supported providers and includes keyword,
 location, provider, employment, workplace, and posting-date filters; optional
 description search; saved jobs; and paging. The API route in `app/api/jobs`
 queries `indexed_jobs` directly without going through the Go project or changing
-the crawler's database schema.
+the crawler's database schema. The route checks Fetch Metadata and Origin or
+Referer headers to reject cross-origin browser requests. This is a browser
+boundary, not authentication: direct HTTP clients can forge these headers, so
+the public jobs endpoint is not protected from determined scrapers.
 
 Saved jobs are stored in the browser's local storage and are available only in
 the browser profile where they were saved. They are not synchronized across

@@ -65,7 +65,7 @@ response, and production latency tests remain rollout gates.
 Expected ownership after implementation:
 
 ```text
-app/api/jobs/route.ts                 HTTP validation, response headers
+app/api/jobs/route.ts                 Same-origin check, HTTP validation and headers
 lib/job-search-params.ts              Canonical validated cache arguments
 lib/job-search.ts                     Cache boundary and Turso SQL read
 lib/jobs.ts                           Public job and response types
@@ -252,6 +252,11 @@ fetch's `cache: "no-store"` setting. The initial release uses only the
 Next.js data/function cache, avoiding unverified CDN behavior and avoiding
 multiple cache freshness windows. CDN caching, `s-maxage`, `stale-while-
 revalidate`, and `ETag` are explicitly out of scope.
+
+The route also rejects requests whose Fetch Metadata, `Origin`, or `Referer`
+indicate a different origin, and rejects requests without same-origin browser
+metadata. This reduces cross-site browser use; it is not authentication because
+non-browser clients can forge these headers.
 
 The route remains `no-store`; the data function must not cache user-specific
 data, authorization state, or bookmark state. Add a regression test that
