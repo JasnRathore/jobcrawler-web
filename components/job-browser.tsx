@@ -362,7 +362,7 @@ export function JobBrowser() {
           setApiLoading(false);
         }
       }
-    }, submitSearchImmediately.current ? 0 : 250);
+    }, submitSearchImmediately.current ? 0 : 120);
 
     return () => {
       window.clearTimeout(timeout);
