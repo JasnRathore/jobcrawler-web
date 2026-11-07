@@ -18,7 +18,7 @@ export function Toaster() {
       <Toast.Portal>
         <Toast.Viewport
           aria-label="Notifications"
-          className="fixed inset-x-4 bottom-4 z-[100] flex max-h-[calc(100dvh-2rem)] flex-col-reverse gap-2 outline-none sm:inset-x-auto sm:right-4 sm:top-4 sm:bottom-auto sm:w-[min(24rem,calc(100vw-2rem))] sm:flex-col"
+          className="fixed inset-x-4 bottom-[calc(4rem+env(safe-area-inset-bottom)+1rem)] z-[100] flex max-h-[calc(100dvh-6rem-env(safe-area-inset-bottom))] flex-col-reverse gap-2 outline-none sm:inset-x-auto sm:right-4 sm:top-4 sm:bottom-auto sm:max-h-[calc(100dvh-2rem)] sm:w-[min(24rem,calc(100vw-2rem))] sm:flex-col"
         >
           <ToastList />
         </Toast.Viewport>

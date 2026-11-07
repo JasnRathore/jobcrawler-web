@@ -90,7 +90,7 @@ export function ThemeToggle() {
       type="button"
       variant="ghost"
       size="icon"
-      className="size-10"
+      className="size-11"
       aria-label={label}
       title={label}
       onClick={toggleTheme}
