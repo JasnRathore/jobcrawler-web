@@ -211,6 +211,7 @@ function getBookmarkErrorMessage(error: unknown): string {
 export function JobBrowser() {
   const [mode, setMode] = useState<ViewMode>("all");
   const [query, setQuery] = useState("");
+  const [submittedQuery, setSubmittedQuery] = useState("");
   const [location, setLocation] = useState("");
   const [provider, setProvider] = useState("");
   const [employment, setEmployment] = useState("");
@@ -265,7 +266,7 @@ export function JobBrowser() {
       page: String(page),
       details: String(includeDescriptions),
     });
-    if (query.trim()) params.set("q", query.trim());
+    if (submittedQuery.trim()) params.set("q", submittedQuery.trim());
     if (location.trim()) params.set("location", location.trim());
     if (provider) params.set("provider", provider);
     if (employment) params.set("employment", employment);
@@ -275,7 +276,7 @@ export function JobBrowser() {
     return params.toString();
   }, [
     page,
-    query,
+    submittedQuery,
     location,
     provider,
     employment,
@@ -447,9 +448,10 @@ export function JobBrowser() {
   };
 
   const clearSearchAndFilters = () => {
-    if (query) invalidateSearchRequest();
+    if (query || submittedQuery) invalidateSearchRequest();
     resetAppliedFilters();
     setQuery("");
+    setSubmittedQuery("");
   };
 
   const openFilters = () => {
@@ -590,7 +592,10 @@ export function JobBrowser() {
 
   const removeFilter = (id: FilterId) => {
     const updates: Record<FilterId, () => void> = {
-      query: () => setQuery(""),
+      query: () => {
+        setQuery("");
+        setSubmittedQuery("");
+      },
       location: () => setLocation(""),
       provider: () => setProvider(""),
       employment: () => setEmployment(""),
@@ -946,6 +951,7 @@ export function JobBrowser() {
                     event.preventDefault();
                     invalidateSearchRequest();
                     setPage(1);
+                    setSubmittedQuery(query);
                     if (mode === "all") {
                       submitSearchImmediately.current = true;
                       setRefreshKey((current) => current + 1);
@@ -992,9 +998,11 @@ export function JobBrowser() {
                   <Button
                     type="submit"
                     variant="default"
-                    className="hidden h-11 shrink-0 rounded-lg px-4 text-xs font-semibold shadow-xs lg:inline-flex"
+                    size="icon-lg"
+                    aria-label="Search roles"
+                    className="h-11 w-11 rounded-lg shadow-xs"
                   >
-                    Search
+                    <Search aria-hidden="true" className="size-4" />
                   </Button>
                 </form>
               </div>

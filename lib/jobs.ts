@@ -17,15 +17,10 @@ export interface Job {
   location_name: string;
   details_url: string;
   apply_url: string;
-  updated_at: string;
   first_published: string;
   employment_type: string;
   workplace_type: string;
-  department: string;
-  education: string;
-  experience: string;
   description: string;
-  attributes_json: string;
   is_bookmarked: number;
   is_available: number;
 }
