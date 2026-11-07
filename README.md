@@ -42,10 +42,10 @@ description search; saved jobs; and paging. The API route in `app/api/jobs`
 queries `indexed_jobs` directly without going through the Go project or changing
 the crawler's database schema.
 
-Saved jobs are stored in the browser's local storage, so they are private to the
-browser and device where they were saved. They are not synchronized across
-devices or browser profiles. Existing rows in the shared `indexed_bookmarks`
-table are not imported.
+Saved jobs are stored in the browser's local storage and are available only in
+the browser profile where they were saved. They are not synchronized across
+devices or browser profiles and are not confidential. Existing rows in the
+shared `indexed_bookmarks` table are not imported.
 
 ## UI
 
@@ -57,6 +57,14 @@ dark themes through the tokens in `app/globals.css`; the theme follows the
 system setting by default and the header toggle remembers an explicit choice on
 this device. Search, filtering, pagination, and apply links use the live jobs
 route; bookmark changes are stored in local storage.
+
+The mobile web experience is specified in
+[`docs/ui/mobile/final-mobile-ui-spec.md`](docs/ui/mobile/final-mobile-ui-spec.md),
+with supporting [design](docs/ui/mobile/design-brief.md) and
+[interaction](docs/ui/mobile/interaction-spec.md) documents. The responsive
+navigation and draft/apply filter sheet are implemented in
+`components/job-browser.tsx`; the final specification remains under council
+review.
 
 ## AI
 

@@ -86,6 +86,11 @@ export async function GET(request: NextRequest) {
     conditions.push("LOWER(j.location_name) LIKE ? ESCAPE '\\'");
     args.push(`%${location.toLowerCase().replace(/[\\%_]/g, "\\$&")}%`);
   }
+  if (postedAfter || postedBefore) {
+    conditions.push(
+      "j.first_published IS NOT NULL AND j.first_published <> ''",
+    );
+  }
   if (postedAfter) {
     conditions.push("j.first_published >= ?");
     args.push(postedAfter);

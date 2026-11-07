@@ -36,6 +36,12 @@
       "sourceType": "github",
       "skillPath": "skills/sol-loop/SKILL.md",
       "computedHash": "b801d3618c0f1f75ca9ea0304d3cfdb9e4d57234ce9bb3656e53561e23d13883"
+    },
+    "spec-driven-development": {
+      "source": "addyosmani/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/spec-driven-development/SKILL.md",
+      "computedHash": "6ecb6a4920d1ae2ce03b81d69a06e3855008c669082afd830bf2c49a5b44abf6"
     }
   }
 }

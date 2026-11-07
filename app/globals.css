@@ -42,7 +42,7 @@
   --destructive: oklch(0.60 0.20 25);
   --border: oklch(0.20 0.01 220 / 8%);
   --input: oklch(0.20 0.01 220 / 6%);
-  --ring: #A8DADC;
+  --ring: oklch(0.45 0.08 210);
   --radius: 1rem;
 }
 
@@ -114,6 +114,10 @@
       animation-duration: 0.01ms !important;
       animation-iteration-count: 1 !important;
       transition-duration: 0.01ms !important;
+    }
+
+    [data-slot="combobox-content"] {
+      animation: none !important;
     }
   }
 }
