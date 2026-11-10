@@ -1,8 +1,6 @@
 "use client";
 
 import {
-  ArrowLeft,
-  ArrowRight,
   Bookmark,
   BriefcaseBusiness,
   Building2,
@@ -22,6 +20,15 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 import { toast } from "@/components/ui/toast";
 import {
   Combobox,
@@ -38,6 +45,10 @@ import {
   readBookmarks,
   writeBookmarks,
 } from "@/lib/bookmarks";
+import {
+  getPagesToPrefetch,
+  getPaginationItems,
+} from "@/lib/job-pagination";
 import {
   providers,
   type Job,
@@ -193,6 +204,12 @@ function descriptionMatchesQuery(description: string, query: string): boolean {
   );
 }
 
+function getPageQuery(queryString: string, page: number): string {
+  const params = new URLSearchParams(queryString);
+  params.set("page", String(page));
+  return params.toString();
+}
+
 function getBookmarkErrorMessage(error: unknown): string {
   if (error instanceof SyntaxError) {
     return "Saved roles in this browser have an unreadable format.";
@@ -222,6 +239,7 @@ export function JobBrowser() {
   const [page, setPage] = useState(1);
   const [refreshKey, setRefreshKey] = useState(0);
   const [result, setResult] = useState<JobSearchResponse | null>(null);
+  const [resultQuery, setResultQuery] = useState("");
   const [apiLoading, setApiLoading] = useState(true);
   const [error, setError] = useState("");
   const [bookmarkError, setBookmarkError] = useState("");
@@ -235,9 +253,56 @@ export function JobBrowser() {
   const focusResultsAfterChange = useRef(false);
   const submitSearchImmediately = useRef(false);
   const requestSequence = useRef(0);
+  const pageResults = useRef(new Map<string, JobSearchResponse>());
+  const pageRequests = useRef(new Map<string, Promise<JobSearchResponse>>());
+  const pageCacheGeneration = useRef(0);
   const invalidateSearchRequest = () => {
     requestSequence.current += 1;
   };
+  const loadPage = useCallback((pageQuery: string) => {
+    const cachedResult = pageResults.current.get(pageQuery);
+    if (cachedResult) {
+      pageResults.current.delete(pageQuery);
+      pageResults.current.set(pageQuery, cachedResult);
+      return Promise.resolve(cachedResult);
+    }
+
+    const pendingRequest = pageRequests.current.get(pageQuery);
+    if (pendingRequest) return pendingRequest;
+
+    const generation = pageCacheGeneration.current;
+    const request = fetch(`/api/jobs?${pageQuery}`, { cache: "no-store" })
+      .then(async (response) => {
+        const payload = (await response.json()) as
+          | JobSearchResponse
+          | { error?: string };
+        if (!response.ok) {
+          throw new Error(
+            "error" in payload && payload.error
+              ? payload.error
+              : "Jobs could not be loaded.",
+          );
+        }
+
+        const jobResult = payload as JobSearchResponse;
+        if (generation === pageCacheGeneration.current) {
+          pageResults.current.set(pageQuery, jobResult);
+          if (pageResults.current.size > 20) {
+            const oldestQuery = pageResults.current.keys().next().value;
+            if (oldestQuery !== undefined) pageResults.current.delete(oldestQuery);
+          }
+        }
+        return jobResult;
+      })
+      .finally(() => {
+        if (pageRequests.current.get(pageQuery) === request) {
+          pageRequests.current.delete(pageQuery);
+        }
+      });
+
+    pageRequests.current.set(pageQuery, request);
+    return request;
+  }, []);
 
   useEffect(() => {
     const desktopViewport = window.matchMedia("(min-width: 1024px)");
@@ -362,26 +427,23 @@ export function JobBrowser() {
 
     const controller = new AbortController();
     const requestId = ++requestSequence.current;
+    const cachedResult = pageResults.current.get(queryString);
+    if (cachedResult) {
+      pageResults.current.delete(queryString);
+      pageResults.current.set(queryString, cachedResult);
+      setResult(cachedResult);
+      setResultQuery(queryString);
+      setError("");
+      setApiLoading(false);
+      return () => controller.abort();
+    }
+
     const timeout = window.setTimeout(async () => {
       submitSearchImmediately.current = false;
       setApiLoading(true);
       setError("");
       try {
-        const response = await fetch(`/api/jobs?${queryString}`, {
-          signal: controller.signal,
-          cache: "no-store",
-        });
-        const payload = (await response.json()) as
-          | JobSearchResponse
-          | { error?: string };
-        if (!response.ok) {
-          throw new Error(
-            "error" in payload && payload.error
-              ? payload.error
-              : "Jobs could not be loaded.",
-          );
-        }
-        const jobResult = payload as JobSearchResponse;
+        const jobResult = await loadPage(queryString);
         if (
           controller.signal.aborted ||
           requestId !== requestSequence.current
@@ -389,6 +451,7 @@ export function JobBrowser() {
           return;
         }
         setResult(jobResult);
+        setResultQuery(queryString);
       } catch (requestError) {
         if (
           controller.signal.aborted ||
@@ -415,7 +478,44 @@ export function JobBrowser() {
       window.clearTimeout(timeout);
       controller.abort();
     };
-  }, [mode, queryString, refreshKey]);
+  }, [loadPage, mode, queryString, refreshKey]);
+
+  useEffect(() => {
+    if (
+      mode === "saved" ||
+      apiLoading ||
+      error ||
+      !result ||
+      resultQuery !== queryString ||
+      result.page !== page
+    ) {
+      return;
+    }
+
+    const visiblePages = getPaginationItems(page, result.totalPages).filter(
+      (item): item is number => typeof item === "number",
+    );
+    const pagesToPrefetch = getPagesToPrefetch(
+      page,
+      result.totalPages,
+      visiblePages,
+    );
+
+    for (const pageToPrefetch of pagesToPrefetch) {
+      void loadPage(getPageQuery(queryString, pageToPrefetch)).catch(
+        () => undefined,
+      );
+    }
+  }, [
+    apiLoading,
+    error,
+    loadPage,
+    mode,
+    page,
+    queryString,
+    result,
+    resultQuery,
+  ]);
 
   const updateFilter = useCallback((update: () => void, changed = true) => {
     submitSearchImmediately.current = false;
@@ -554,6 +654,9 @@ export function JobBrowser() {
 
   const retryLoading = () => {
     invalidateSearchRequest();
+    pageCacheGeneration.current += 1;
+    pageResults.current.clear();
+    pageRequests.current.clear();
     setRefreshKey((current) => current + 1);
     try {
       const storedBookmarks = readBookmarks();
@@ -691,6 +794,7 @@ export function JobBrowser() {
       : result?.totalPages ?? 1;
   const currentPage =
     mode === "saved" ? Math.min(page, totalPages) : result?.page ?? page;
+  const paginationItems = getPaginationItems(currentPage, totalPages);
   const jobs =
     mode === "saved"
       ? filteredBookmarks
@@ -701,6 +805,10 @@ export function JobBrowser() {
           is_bookmarked: bookmarkKeys.has(bookmarkKey(job)) ? 1 : 0,
         }));
   const loading = mode === "saved" ? !bookmarksReady : apiLoading;
+  const previousPageDisabled =
+    currentPage <= 1 || loading;
+  const nextPageDisabled =
+    currentPage >= totalPages || loading;
   const visibleError = bookmarkError || (mode === "all" ? error : "");
   const firstResult = total === 0 ? 0 : (currentPage - 1) * pageSize + 1;
   const lastResult = Math.min((currentPage - 1) * pageSize + jobs.length, total);
@@ -1334,32 +1442,81 @@ export function JobBrowser() {
 
             {/* Pagination footer */}
             {jobs.length > 0 && (
-              <footer className="mt-6 flex items-center justify-between">
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  disabled={currentPage <= 1 || loading}
-                  onClick={() => changePage(Math.max(1, currentPage - 1))}
-                  className="min-h-11 gap-2 rounded-lg border border-border/70 bg-secondary px-3 text-xs font-medium text-secondary-foreground hover:bg-secondary/80 disabled:cursor-not-allowed disabled:opacity-30 lg:min-h-9"
-                >
-                  <ArrowLeft aria-hidden="true" className="size-3.5" />
-                  Previous
-                </Button>
+              <footer className="mt-6">
+                <Pagination aria-label="Job results pages" className="mx-0 w-full">
+                  <PaginationContent className="gap-0.5">
+                    <PaginationItem>
+                      <PaginationPrevious
+                        href="#results"
+                        aria-disabled={previousPageDisabled}
+                        tabIndex={previousPageDisabled ? -1 : undefined}
+                        className={cn(
+                          "min-h-10 min-w-10 sm:min-w-24",
+                          previousPageDisabled &&
+                            "pointer-events-none opacity-40",
+                        )}
+                        onClick={(event) => {
+                          event.preventDefault();
+                          if (!previousPageDisabled) {
+                            changePage(currentPage - 1);
+                          }
+                        }}
+                      />
+                    </PaginationItem>
+                    {paginationItems.map((item, index) => {
+                      if (item === "ellipsis") {
+                        return (
+                          <PaginationItem key={`${item}-${index}`}>
+                            <PaginationEllipsis />
+                          </PaginationItem>
+                        );
+                      }
 
-                <span className="text-xs font-medium tabular-nums text-muted-foreground">
+                      const pageDisabled = loading;
+                      return (
+                        <PaginationItem key={item}>
+                          <PaginationLink
+                            href="#results"
+                            isActive={item === currentPage}
+                            aria-label={`Page ${item}`}
+                            aria-disabled={pageDisabled}
+                            tabIndex={pageDisabled ? -1 : undefined}
+                            className={cn(
+                              "min-h-10 min-w-10 tabular-nums",
+                              pageDisabled && "pointer-events-none opacity-40",
+                            )}
+                            onClick={(event) => {
+                              event.preventDefault();
+                              if (!pageDisabled) changePage(item);
+                            }}
+                          >
+                            {item}
+                          </PaginationLink>
+                        </PaginationItem>
+                      );
+                    })}
+                    <PaginationItem>
+                      <PaginationNext
+                        href="#results"
+                        aria-disabled={nextPageDisabled}
+                        tabIndex={nextPageDisabled ? -1 : undefined}
+                        className={cn(
+                          "min-h-10 min-w-10 sm:min-w-24",
+                          nextPageDisabled && "pointer-events-none opacity-40",
+                        )}
+                        onClick={(event) => {
+                          event.preventDefault();
+                          if (!nextPageDisabled) {
+                            changePage(currentPage + 1);
+                          }
+                        }}
+                      />
+                    </PaginationItem>
+                  </PaginationContent>
+                </Pagination>
+                <p className="mt-2 text-center text-xs font-medium tabular-nums text-muted-foreground">
                   Page {currentPage} of {totalPages}
-                </span>
-
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  disabled={currentPage >= totalPages || loading}
-                  onClick={() => changePage(Math.min(totalPages, currentPage + 1))}
-                  className="min-h-11 gap-2 rounded-lg border border-border/70 bg-secondary px-3 text-xs font-medium text-secondary-foreground hover:bg-secondary/80 disabled:cursor-not-allowed disabled:opacity-30 lg:min-h-9"
-                >
-                  Next
-                  <ArrowRight aria-hidden="true" className="size-3.5" />
-                </Button>
+                </p>
               </footer>
             )}
             </main>
