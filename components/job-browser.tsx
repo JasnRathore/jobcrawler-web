@@ -364,6 +364,20 @@ export function JobBrowser() {
   ]);
 
   useEffect(() => {
+    if (mode === "saved") {
+      document.title = "Saved roles — Crawler";
+    } else if (submittedQuery.trim() && location.trim()) {
+      document.title = `“${submittedQuery.trim()}” in ${location.trim()} — Crawler`;
+    } else if (submittedQuery.trim()) {
+      document.title = `“${submittedQuery.trim()}” — Crawler`;
+    } else if (location.trim()) {
+      document.title = `Roles in ${location.trim()} — Crawler`;
+    } else {
+      document.title = "Crawler";
+    }
+  }, [location, mode, submittedQuery]);
+
+  useEffect(() => {
     const loadBookmarks = () => {
       try {
         setBookmarks(readBookmarks());
@@ -853,6 +867,19 @@ export function JobBrowser() {
         {/* Left Sidebar */}
         <aside className="hidden w-full shrink-0 flex-col justify-between bg-card/25 p-4 lg:sticky lg:top-0 lg:flex lg:h-screen lg:w-60 lg:overflow-y-auto">
           <div className="space-y-4">
+            {/* Brand Logo & Name */}
+            <div className="flex items-center gap-2.5 px-1 py-0.5">
+              <img
+                src="/crawler-logo.png"
+                alt=""
+                aria-hidden="true"
+                className="size-7 rounded-lg object-contain shadow-xs"
+              />
+              <span className="text-sm font-semibold tracking-tight text-foreground">
+                Crawler
+              </span>
+            </div>
+
             {/* View switcher */}
             <nav aria-label="Job views" className="flex flex-col gap-2.5">
               <Button
@@ -1008,9 +1035,17 @@ export function JobBrowser() {
             {/* Top Header container: Search Bar + Results count & sort (vertically aligned with sidebar) */}
             <div className="sticky top-0 z-20 flex shrink-0 flex-col gap-3 bg-background/95 px-4 pb-4 pt-[calc(1rem+env(safe-area-inset-top))] min-[480px]:px-5 md:px-6 backdrop-blur-md">
               <div className="flex items-center justify-between gap-3 lg:hidden">
-                <span className="text-sm font-semibold tracking-tight text-foreground">
-                  Crawler
-                </span>
+                <div className="flex items-center gap-2">
+                  <img
+                    src="/crawler-logo.png"
+                    alt=""
+                    aria-hidden="true"
+                    className="size-6 rounded-md object-contain shadow-2xs"
+                  />
+                  <span className="text-sm font-semibold tracking-tight text-foreground">
+                    Crawler
+                  </span>
+                </div>
                 <div className="flex items-center gap-2">
                   <nav
                     aria-label="Job views"
