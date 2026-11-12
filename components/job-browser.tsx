@@ -867,19 +867,6 @@ export function JobBrowser() {
         {/* Left Sidebar */}
         <aside className="hidden w-full shrink-0 flex-col justify-between bg-card/25 p-4 lg:sticky lg:top-0 lg:flex lg:h-screen lg:w-60 lg:overflow-y-auto">
           <div className="space-y-4">
-            {/* Brand Logo & Name */}
-            <div className="flex items-center gap-2.5 px-1 py-0.5">
-              <img
-                src="/crawler-logo.png"
-                alt=""
-                aria-hidden="true"
-                className="size-7 rounded-lg object-contain shadow-xs"
-              />
-              <span className="text-sm font-semibold tracking-tight text-foreground">
-                Crawler
-              </span>
-            </div>
-
             {/* View switcher */}
             <nav aria-label="Job views" className="flex flex-col gap-2.5">
               <Button
@@ -1018,7 +1005,13 @@ export function JobBrowser() {
           </div>
 
           {/* Sidebar Footer with Theme Toggle */}
-          <div className="hidden lg:flex items-center justify-center pt-3">
+          <div className="hidden lg:flex items-center justify-center gap-3 pt-3">
+            <img
+              src="/crawler-logo.png"
+              alt=""
+              aria-hidden="true"
+              className="size-7 rounded-lg object-contain shadow-xs"
+            />
             <ThemeToggle />
           </div>
         </aside>
