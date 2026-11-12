@@ -29,7 +29,7 @@ function toPlainJobs(rows: Job[]): Job[] {
   }));
 }
 
-function buildWhere(params: JobSearchParams): {
+export function buildWhere(params: JobSearchParams): {
   where: string;
   args: Array<string | number>;
 } {
@@ -102,53 +102,165 @@ function buildWhere(params: JobSearchParams): {
   return { where: conditions.join(" AND "), args };
 }
 
+// ── Column lists ─────────────────────────────────────────────────────
+// Full row: fetched only for the 20 result rows via deferred-join
+const JOB_COLUMNS = `
+  j.provider, j.company_slug, j.job_id, j.title, j.company_name,
+  j.location_name, j.details_url, j.apply_url,
+  j.first_published, j.employment_type, j.workplace_type, j.description,
+  0 AS is_bookmarked, 1 AS is_available`;
+
+// ── Deferred-join page query (Opt 3) ─────────────────────────────────
+// Step 1: scan the narrow covering index to find 20 row IDs
+// Step 2: join back to fetch full rows only for those 20 IDs
+function buildDeferredJoinPageQuery(
+  where: string,
+  orderAsc: boolean,
+): string {
+  const primaryOrder = orderAsc
+    ? "j.first_published ASC, j.title COLLATE NOCASE DESC"
+    : "j.first_published DESC, j.title COLLATE NOCASE";
+  const innerOrder = orderAsc
+    ? "inner_j.first_published ASC, inner_j.title COLLATE NOCASE DESC"
+    : "inner_j.first_published DESC, inner_j.title COLLATE NOCASE";
+  // The inner WHERE uses inner_j alias — replace j. with inner_j.
+  const innerWhere = where.replace(/\bj\./g, "inner_j.");
+
+  return `SELECT ${JOB_COLUMNS}
+    FROM indexed_jobs j
+    INNER JOIN (
+      SELECT inner_j.provider, inner_j.company_slug, inner_j.job_id
+      FROM indexed_jobs inner_j
+      WHERE ${innerWhere}
+      ORDER BY ${innerOrder}
+      LIMIT ? OFFSET ?
+    ) AS page_ids
+      ON j.provider = page_ids.provider
+      AND j.company_slug = page_ids.company_slug
+      AND j.job_id = page_ids.job_id
+    ORDER BY ${primaryOrder}`;
+}
+
+// ── Separated count cache (Opt 1) ────────────────────────────────────
+// Keyed by filter params only (not page), so all prefetched pages of the
+// same search share one cached count.
+
+interface CountParams {
+  cacheSchemaVersion: string;
+  query: string;
+  location: string;
+  provider: string;
+  employment: string;
+  workplace: string;
+  postedAfter: string;
+  postedBefore: string;
+  includeDescriptions: boolean;
+}
+
+function toCountParams(params: JobSearchParams): CountParams {
+  return {
+    cacheSchemaVersion: params.cacheSchemaVersion,
+    query: params.query,
+    location: params.location,
+    provider: params.provider,
+    employment: params.employment,
+    workplace: params.workplace,
+    postedAfter: params.postedAfter,
+    postedBefore: params.postedBefore,
+    includeDescriptions: params.includeDescriptions,
+  };
+}
+
+async function executeCount(
+  where: string,
+  args: Array<string | number>,
+): Promise<number> {
+  const database = getTursoConnection();
+  const [result] = await database.batch([
+    {
+      sql: `SELECT COUNT(*) AS total FROM indexed_jobs j WHERE ${where}`,
+      args,
+    },
+  ]);
+  return Number(result.rows?.[0]?.total ?? 0);
+}
+
+async function getCachedCount(
+  _countParams: CountParams,
+  where: string,
+  args: Array<string | number>,
+): Promise<number> {
+  "use cache";
+  cacheLife({ revalidate: 60, expire: 600 });
+  cacheTag("jobs-count");
+
+  return executeCount(where, args);
+}
+
+// ── Reverse scan for tail pages (Opt 5) ──────────────────────────────
+// When the requested page is in the second half of total pages, scan from
+// the end of the index (ascending order) with a mirrored offset, then
+// reverse the result array. This makes the last page as fast as the first.
+
+function computePageScan(
+  page: number,
+  pageSize: number,
+  total: number,
+  totalPages: number,
+): { offset: number; limit: number; reverseResults: boolean } {
+  const useTailScan = page > totalPages / 2 && totalPages > 1;
+
+  if (useTailScan) {
+    // Scan from the end: offset is distance from the last row
+    const tailOffset = Math.max(0, total - page * pageSize);
+    const tailLimit = Math.min(pageSize, total - (page - 1) * pageSize);
+    return { offset: tailOffset, limit: tailLimit, reverseResults: true };
+  }
+
+  return {
+    offset: (page - 1) * pageSize,
+    limit: pageSize,
+    reverseResults: false,
+  };
+}
+
+// ── Main search execution ────────────────────────────────────────────
+
 export async function executeJobSearch(
   params: JobSearchParams,
 ): Promise<JobSearchResponse> {
   const database = getTursoConnection();
   const { where, args } = buildWhere(params);
-  const requestedOffset = (params.page - 1) * params.pageSize;
-  const [countResult, jobsResult] = await database.batch([
+
+  // Get count from cache (Opt 1) — shared across all pages of the same search
+  const countParams = toCountParams(params);
+  const total =
+    process.env.JOB_SEARCH_CACHE_MODE?.trim().toLowerCase() === "off"
+      ? await executeCount(where, args)
+      : await getCachedCount(countParams, where, args);
+
+  const totalPages = Math.max(1, Math.ceil(total / params.pageSize));
+  const page = Math.min(params.page, totalPages);
+
+  // Compute scan direction and offset (Opt 5)
+  const scan = computePageScan(page, params.pageSize, total, totalPages);
+  const useReverseOrder = scan.reverseResults;
+
+  // Build deferred-join query (Opt 3) with appropriate sort direction
+  const pageQuery = buildDeferredJoinPageQuery(where, useReverseOrder);
+
+  const [jobsResult] = await database.batch([
     {
-      sql: `SELECT COUNT(*) AS total FROM indexed_jobs j WHERE ${where}`,
-      args,
-    },
-    {
-      sql: `SELECT
-        j.provider, j.company_slug, j.job_id, j.title, j.company_name,
-        j.location_name, j.details_url, j.apply_url,
-        j.first_published, j.employment_type, j.workplace_type, j.description,
-        0 AS is_bookmarked, 1 AS is_available
-      FROM indexed_jobs j
-      WHERE ${where}
-      ORDER BY j.first_published DESC, j.title COLLATE NOCASE
-      LIMIT ? OFFSET ?`,
-      args: [...args, params.pageSize, requestedOffset],
+      sql: pageQuery,
+      args: [...args, scan.limit, scan.offset],
     },
   ]);
 
-  const total = Number(countResult.rows?.[0]?.total ?? 0);
-  const totalPages = Math.max(1, Math.ceil(total / params.pageSize));
-  const page = Math.min(params.page, totalPages);
-  const offset = (page - 1) * params.pageSize;
-
   let jobs = toPlainJobs(jobsResult.rows as Job[]);
-  if (offset !== requestedOffset) {
-    const pagedResult = await database.all(
-      `SELECT
-        j.provider, j.company_slug, j.job_id, j.title, j.company_name,
-        j.location_name, j.details_url, j.apply_url,
-        j.first_published, j.employment_type, j.workplace_type, j.description,
-        0 AS is_bookmarked, 1 AS is_available
-      FROM indexed_jobs j
-      WHERE ${where}
-      ORDER BY j.first_published DESC, j.title COLLATE NOCASE
-      LIMIT ? OFFSET ?`,
-      ...args,
-      params.pageSize,
-      offset,
-    );
-    jobs = toPlainJobs(pagedResult as Job[]);
+
+  // Reverse results if we used a tail scan (Opt 5)
+  if (useReverseOrder) {
+    jobs.reverse();
   }
 
   return { jobs, total, page, pageSize: params.pageSize, totalPages };

@@ -8,17 +8,24 @@ export async function GET(request: NextRequest) {
   if (!isSameOriginRequest(request.headers, request.nextUrl.origin)) {
     return NextResponse.json(
       { error: "This endpoint only accepts same-origin requests." },
-      { status: 403, headers: { "Cache-Control": "no-store" } },
+      {
+        status: 403,
+        headers: { "Cache-Control": "no-store" },
+      },
     );
   }
 
   const parsed = parseJobSearchParams(request.nextUrl.searchParams);
   if (!parsed.ok) {
-    return NextResponse.json({ error: parsed.error }, { status: 400 });
+    return NextResponse.json(
+      { error: parsed.error },
+      { status: 400 },
+    );
   }
 
   try {
     const result = await searchJobs(parsed.params);
+
     return NextResponse.json(result, {
       headers: { "Cache-Control": "no-store" },
     });
@@ -30,3 +37,4 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+

@@ -40,6 +40,10 @@ import {
 } from "@/components/ui/combobox";
 import { cn } from "cn";
 import {
+  decodeApiResponse,
+  isApiErrorPayload,
+} from "@/lib/api-payload";
+import {
   bookmarkKey,
   clearBookmarks,
   readBookmarks,
@@ -50,6 +54,7 @@ import {
   getPaginationItems,
 } from "@/lib/job-pagination";
 import {
+  isJobSearchResponse,
   providers,
   type Job,
   type JobSearchResponse,
@@ -271,20 +276,27 @@ export function JobBrowser() {
     if (pendingRequest) return pendingRequest;
 
     const generation = pageCacheGeneration.current;
-    const request = fetch(`/api/jobs?${pageQuery}`, { cache: "no-store" })
+    const request = fetch(`/api/jobs?${pageQuery}`, {
+      cache: "no-store",
+      headers: {
+        Accept: "application/json",
+      },
+    })
       .then(async (response) => {
-        const payload = (await response.json()) as
-          | JobSearchResponse
-          | { error?: string };
+        const payload = await decodeApiResponse(response);
         if (!response.ok) {
           throw new Error(
-            "error" in payload && payload.error
+            isApiErrorPayload(payload) && payload.error
               ? payload.error
               : "Jobs could not be loaded.",
           );
         }
 
-        const jobResult = payload as JobSearchResponse;
+        if (!isJobSearchResponse(payload)) {
+          throw new Error("Jobs could not be loaded.");
+        }
+
+        const jobResult = payload;
         if (generation === pageCacheGeneration.current) {
           pageResults.current.set(pageQuery, jobResult);
           if (pageResults.current.size > 20) {
