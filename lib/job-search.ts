@@ -10,6 +10,11 @@ function escapeLike(value: string): string {
   return value.replace(/[\\%_]/g, "\\$&");
 }
 
+function formatFtsQuery(query: string): string {
+  const clean = query.trim().replace(/"/g, '""');
+  return `"${clean}"`;
+}
+
 function toPlainJobs(rows: Job[]): Job[] {
   return rows.map((job) => ({
     provider: job.provider,
@@ -41,15 +46,15 @@ export function buildWhere(params: JobSearchParams): {
     args.push(params.provider);
   }
   if (params.query) {
-    const pattern = `%${escapeLike(params.query)}%`;
-    const searchConditions = [
-      "LOWER(j.title) LIKE ? ESCAPE '\\'",
-      "LOWER(j.company_name) LIKE ? ESCAPE '\\'",
-      "LOWER(j.location_name) LIKE ? ESCAPE '\\'",
-    ];
-    args.push(pattern, pattern, pattern);
-
     if (params.includeDescriptions) {
+      const pattern = `%${escapeLike(params.query)}%`;
+      const searchConditions = [
+        "LOWER(j.title) LIKE ? ESCAPE '\\'",
+        "LOWER(j.company_name) LIKE ? ESCAPE '\\'",
+        "LOWER(j.location_name) LIKE ? ESCAPE '\\'",
+      ];
+      args.push(pattern, pattern, pattern);
+
       const terms = params.query.match(/[a-z0-9]+/g)?.slice(0, 8) ?? [];
       if (terms.length) {
         searchConditions.push(
@@ -69,9 +74,14 @@ export function buildWhere(params: JobSearchParams): {
           );
         }
       }
-    }
 
-    conditions.push(`(${searchConditions.join(" OR ")})`);
+      conditions.push(`(${searchConditions.join(" OR ")})`);
+    } else {
+      conditions.push(
+        "j.rowid IN (SELECT rowid FROM indexed_jobs_fts WHERE indexed_jobs_fts MATCH ?)",
+      );
+      args.push(formatFtsQuery(params.query));
+    }
   }
   if (params.location) {
     conditions.push("LOWER(j.location_name) LIKE ? ESCAPE '\\'");
